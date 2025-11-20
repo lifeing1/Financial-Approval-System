@@ -20,21 +20,18 @@ public class SaTokenConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
                 .addPathPatterns("/**")
+                // 排除不需要登录验证的路径
                 .excludePathPatterns(
+                        // 认证相关
                         "/api/auth/login",
                         "/api/auth/logout",
-                        "/auth/login",
-                        "/auth/logout",
-                        "/doc.html",
+                        // Swagger/Knife4j 文档
                         "/doc.html/**",
                         "/swagger-resources/**",
                         "/webjars/**",
-                        "/v3/api-docs/**",
-                        "/api/v3/api-docs/**",
                         "/v3/**",
-                        "/api/v3/**",
                         "/swagger-ui/**",
-                        "/swagger-ui.html",
+                        // 其他
                         "/favicon.ico",
                         "/error"
                 );
