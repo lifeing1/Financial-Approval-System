@@ -1,6 +1,7 @@
 <template>
   <div class="dashboard">
-    <n-grid :cols="4" :x-gap="24" :y-gap="24">
+    <n-spin :show="loading">
+      <n-grid :cols="4" :x-gap="24" :y-gap="24">
       <!-- 统计卡片 -->
       <n-gi>
         <n-card title="待办事项" hoverable>
@@ -40,6 +41,7 @@
       <n-gi>
         <n-card title="我的待办" :segmented="{ content: true }">
           <n-list hoverable clickable>
+            <n-empty v-if="todoList.length === 0" description="暂无待办事项" />
             <n-list-item v-for="item in todoList" :key="item.id">
               <n-thing :title="item.title" :description="item.description">
                 <template #footer>
@@ -64,6 +66,7 @@
       <n-gi>
         <n-card title="最近申请" :segmented="{ content: true }">
           <n-list hoverable clickable>
+            <n-empty v-if="applyList.length === 0" description="暂无申请记录" />
             <n-list-item v-for="item in applyList" :key="item.id">
               <n-thing :title="item.title" :description="item.description">
                 <template #footer>
@@ -84,6 +87,7 @@
         </n-card>
       </n-gi>
     </n-grid>
+  </n-spin>
   </div>
 </template>
 
@@ -91,6 +95,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useMessage } from 'naive-ui'
 import {
   NGrid,
   NGi,
@@ -102,11 +107,16 @@ import {
   NSpace,
   NTag,
   NText,
-  NButton
+  NButton,
+  NSpin,
+  NEmpty
 } from 'naive-ui'
+import { getMyList as getMyBusinessTrip, getTodoList as getTodoBusinessTrip, getDoneList as getDoneBusinessTrip } from '@/api/businessTrip'
+import { getMyList as getMyPettyCash, getTodoList as getTodoPettyCash, getDoneList as getDonePettyCash } from '@/api/pettyCash'
 
 const router = useRouter()
 const userStore = useUserStore()
+const message = useMessage()
 
 // 统计数据
 const statistics = ref({
@@ -122,53 +132,118 @@ const todoList = ref([])
 // 申请列表
 const applyList = ref([])
 
+// 加载状态
+const loading = ref(false)
+
+// 获取状态标签类型
+const getStatusType = (status) => {
+  const statusMap = {
+    '草稿': 'default',
+    '待审批': 'warning',
+    '审批中': 'info',
+    '已通过': 'success',
+    '已驳回': 'error',
+    '已完成': 'success'
+  }
+  return statusMap[status] || 'default'
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
 // 加载数据
 const loadData = async () => {
-  // TODO: 调用接口获取数据
-  statistics.value = {
-    todo: 5,
-    done: 23,
-    myApply: 12,
-    monthTrip: 3
-  }
-  
-  todoList.value = [
-    {
-      id: 1,
-      title: '张三的出差申请',
-      description: '北京 → 上海，2024-01-15',
-      status: '待审批',
-      type: 'warning',
-      createTime: '2024-01-10 10:30'
-    },
-    {
-      id: 2,
-      title: '李四的备用金申请',
-      description: '申请金额：5000元',
-      status: '待审批',
-      type: 'warning',
-      createTime: '2024-01-10 09:15'
+  try {
+    loading.value = true
+    
+    // 并行获取所有数据
+    const [tripTodo, cashTodo, tripDone, cashDone, tripMy, cashMy] = await Promise.all([
+      getTodoBusinessTrip({ current: 1, size: 10 }),
+      getTodoPettyCash({ current: 1, size: 10 }),
+      getDoneBusinessTrip({ current: 1, size: 10 }),
+      getDonePettyCash({ current: 1, size: 10 }),
+      getMyBusinessTrip({ current: 1, size: 10 }),
+      getMyPettyCash({ current: 1, size: 10 })
+    ])
+    
+    // 计算统计数据
+    const todoTotal = (tripTodo.data?.total || 0) + (cashTodo.data?.total || 0)
+    const doneTotal = (tripDone.data?.total || 0) + (cashDone.data?.total || 0)
+    const myApplyTotal = (tripMy.data?.total || 0) + (cashMy.data?.total || 0)
+    
+    // 计算本月出差次数
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
+    const monthTripCount = (tripMy.data?.records || []).filter(item => {
+      const createDate = new Date(item.createTime)
+      return createDate.getMonth() === currentMonth && 
+             createDate.getFullYear() === currentYear &&
+             item.status !== '草稿' && item.status !== '已驳回'
+    }).length
+    
+    statistics.value = {
+      todo: todoTotal,
+      done: doneTotal,
+      myApply: myApplyTotal,
+      monthTrip: monthTripCount
     }
-  ]
-  
-  applyList.value = [
-    {
-      id: 1,
+    
+    // 处理待办列表 - 混合出差和备用金
+    const todoTrips = (tripTodo.data?.records || []).slice(0, 3).map(item => ({
+      id: `trip-${item.id}`,
+      title: `${item.applicantName || ''}的出差申请`,
+      description: `${item.destination || ''} - ${item.startDate || ''} 至 ${item.endDate || ''}`,
+      status: item.status || '待审批',
+      type: getStatusType(item.status),
+      createTime: formatDate(item.createTime)
+    }))
+    
+    const todoCash = (cashTodo.data?.records || []).slice(0, 3).map(item => ({
+      id: `cash-${item.id}`,
+      title: `${item.applicantName || ''}的备用金申请`,
+      description: `申请金额：${item.amount || 0}元`,
+      status: item.status || '待审批',
+      type: getStatusType(item.status),
+      createTime: formatDate(item.createTime)
+    }))
+    
+    todoList.value = [...todoTrips, ...todoCash]
+      .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+      .slice(0, 5)
+    
+    // 处理我的申请列表 - 混合出差和备用金
+    const myTrips = (tripMy.data?.records || []).slice(0, 3).map(item => ({
+      id: `trip-${item.id}`,
       title: '我的出差申请',
-      description: '深圳 → 广州，2024-01-20',
-      status: '审批中',
-      type: 'info',
-      createTime: '2024-01-09 14:20'
-    },
-    {
-      id: 2,
+      description: `${item.destination || ''} - ${item.startDate || ''} 至 ${item.endDate || ''}`,
+      status: item.status || '草稿',
+      type: getStatusType(item.status),
+      createTime: formatDate(item.createTime)
+    }))
+    
+    const myCash = (cashMy.data?.records || []).slice(0, 3).map(item => ({
+      id: `cash-${item.id}`,
       title: '我的备用金申请',
-      description: '申请金额：3000元',
-      status: '已通过',
-      type: 'success',
-      createTime: '2024-01-08 11:45'
-    }
-  ]
+      description: `申请金额：${item.amount || 0}元`,
+      status: item.status || '草稿',
+      type: getStatusType(item.status),
+      createTime: formatDate(item.createTime)
+    }))
+    
+    applyList.value = [...myTrips, ...myCash]
+      .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+      .slice(0, 5)
+      
+  } catch (error) {
+    console.error('加载数据失败:', error)
+    message.error('加载数据失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {

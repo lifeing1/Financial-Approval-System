@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -66,8 +67,11 @@ public class BusinessTripServiceImpl implements BusinessTripService {
         if (trip.getId() == null) {
             // 生成申请编号
             trip.setApplyNo("BT" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + System.currentTimeMillis() % 10000);
+            trip.setCreateTime(LocalDateTime.now());
+            trip.setUpdateTime(LocalDateTime.now());
             businessTripMapper.insert(trip);
         } else {
+            trip.setUpdateTime(LocalDateTime.now());
             businessTripMapper.updateById(trip);
             // 删除旧的费用明细
             tripExpenseMapper.delete(new LambdaQueryWrapper<TripExpense>()
@@ -82,6 +86,7 @@ public class BusinessTripServiceImpl implements BusinessTripService {
                 expense.setExpenseType(expenseDTO.getExpenseType());
                 expense.setAmount(expenseDTO.getAmount());
                 expense.setRemark(expenseDTO.getRemark());
+                expense.setAttachments(expenseDTO.getAttachments());
                 tripExpenseMapper.insert(expense);
             }
         }

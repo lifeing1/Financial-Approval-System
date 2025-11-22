@@ -110,8 +110,8 @@ const columns = [
   },
   {
     title: '申请时间',
-    key: 'createTime',
-    width: 180
+    key: 'applyDate',
+    width: 150
   },
   {
     title: '操作',

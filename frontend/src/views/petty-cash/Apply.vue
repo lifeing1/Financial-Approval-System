@@ -40,18 +40,18 @@
             </n-form-item>
           </n-gi>
           
-          <n-gi :span="2">
-            <n-form-item label="还款计划" path="repaymentPlan">
-              <n-input
-                v-model:value="formData.repaymentPlan"
-                type="textarea"
-                placeholder="请输入还款计划"
-                :rows="3"
-                maxlength="500"
-                show-count
-              />
-            </n-form-item>
-          </n-gi>
+<!--          <n-gi :span="2">-->
+<!--            <n-form-item label="还款计划" path="repaymentPlan">-->
+<!--              <n-input-->
+<!--                v-model:value="formData.repaymentPlan"-->
+<!--                type="textarea"-->
+<!--                placeholder="请输入还款计划"-->
+<!--                :rows="3"-->
+<!--                maxlength="500"-->
+<!--                show-count-->
+<!--              />-->
+<!--            </n-form-item>-->
+<!--          </n-gi>-->
           
           <n-gi :span="2">
             <n-form-item label="备注">
@@ -144,6 +144,7 @@ const handleSaveDraft = async () => {
     message.success('保存成功')
   } catch (error) {
     console.error('保存失败：', error)
+    message.error('保存失败，请稍后重试')
   }
 }
 
@@ -162,11 +163,16 @@ const handleSubmit = async () => {
           await handleSaveDraft()
           
           // 再提交
-          await submitApply(draftId.value)
-          message.success('提交成功')
-          router.push('/petty-cash/my')
+          if (draftId.value) {
+            await submitApply(draftId.value)
+            message.success('提交成功')
+            router.push('/petty-cash/my')
+          } else {
+            message.error('保存失败，请重试')
+          }
         } catch (error) {
           console.error('提交失败：', error)
+          message.error('提交失败，请稍后重试')
         }
       }
     })
@@ -190,6 +196,8 @@ const handleReset = () => {
 
 <style scoped>
 .petty-cash-apply {
+  width: 100%;
   max-width: 1200px;
+  margin: 0 auto;
 }
 </style>
