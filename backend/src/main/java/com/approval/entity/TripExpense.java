@@ -23,6 +23,11 @@ public class TripExpense {
     
     private String remark;
     
+    /**
+     * 附件URL（多个文件用逗号分隔）
+     */
+    private String attachments;
+    
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -49,8 +50,11 @@ public class PettyCashServiceImpl implements PettyCashService {
         if (pettyCash.getId() == null) {
             // 生成申请编号
             pettyCash.setApplyNo("PC" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + System.currentTimeMillis() % 10000);
+            pettyCash.setCreateTime(LocalDateTime.now());
+            pettyCash.setUpdateTime(LocalDateTime.now());
             pettyCashMapper.insert(pettyCash);
         } else {
+            pettyCash.setUpdateTime(LocalDateTime.now());
             pettyCashMapper.updateById(pettyCash);
         }
         
@@ -60,6 +64,8 @@ public class PettyCashServiceImpl implements PettyCashService {
     @Override
     public void submitApply(Long id) {
         PettyCash pettyCash = pettyCashMapper.selectById(id);
+        //申请时间
+        //pe
         if (pettyCash == null) {
             throw new BusinessException("申请不存在");
         }
@@ -72,6 +78,7 @@ public class PettyCashServiceImpl implements PettyCashService {
         if (pettyCash.getStatus() != 0) {
             throw new BusinessException("只有草稿状态才能提交");
         }
+
         
         // TODO: 启动工作流
         pettyCash.setStatus(1); // 审批中

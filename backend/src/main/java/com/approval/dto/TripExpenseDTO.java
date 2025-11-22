@@ -18,4 +18,9 @@ public class TripExpenseDTO {
     private BigDecimal amount;
     
     private String remark;
+    
+    /**
+     * 附件URL（多个文件用逗号分隔）
+     */
+    private String attachments;
 }

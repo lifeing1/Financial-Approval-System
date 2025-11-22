@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1b6317ae-e5a0-4c9d-9851-aa8f2ead94ea" name="更改" comment=".gitignore文件上传">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/approval/controller/FileController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/approval/controller/FileController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/approval/dto/TripExpenseDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/approval/dto/TripExpenseDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/approval/entity/TripExpense.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/approval/entity/TripExpense.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/approval/service/impl/BusinessTripServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/approval/service/impl/BusinessTripServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/approval/service/impl/PettyCashServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/approval/service/impl/PettyCashServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/ApprovalSystemApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/ApprovalSystemApplication.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/common/exception/BusinessException.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/common/exception/BusinessException.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/common/exception/GlobalExceptionHandler.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/common/exception/GlobalExceptionHandler.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/common/result/Result.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/common/result/Result.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/config/FlowableConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/config/FlowableConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/config/Knife4jConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/config/Knife4jConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/config/MybatisPlusConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/config/MybatisPlusConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/config/SaTokenConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/config/SaTokenConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/AuthController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/AuthController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/BusinessTripController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/BusinessTripController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/FileController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/FileController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/PettyCashController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/PettyCashController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/StatisticsController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/StatisticsController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/WorkflowController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/controller/WorkflowController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/BusinessTripDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/BusinessTripDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ChangePasswordDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ChangePasswordDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/LoginDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/LoginDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/PettyCashDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/PettyCashDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessDefinitionDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessDefinitionDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessDeployRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessDeployRequest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessNodeDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/ProcessNodeDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/TripExpenseDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/dto/TripExpenseDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ApprovalOpinion.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ApprovalOpinion.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/Attachment.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/Attachment.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/BusinessTrip.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/BusinessTrip.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/PettyCash.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/PettyCash.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ProcessDefinitionInfo.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ProcessDefinitionInfo.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ProcessNode.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/ProcessNode.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysDept.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysDept.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysMenu.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysMenu.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysRole.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysRole.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysUser.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/SysUser.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/TripExpense.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/entity/TripExpense.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/AttachmentMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/AttachmentMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/BusinessTripMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/BusinessTripMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/PettyCashMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/PettyCashMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/ProcessDefinitionInfoMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/ProcessDefinitionInfoMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/ProcessNodeMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/ProcessNodeMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/SysDeptMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/SysDeptMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/SysUserMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/SysUserMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/TripExpenseMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/mapper/TripExpenseMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/AuthService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/AuthService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/BusinessTripService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/BusinessTripService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/FileService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/FileService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/PettyCashService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/PettyCashService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/StatisticsService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/StatisticsService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/WorkflowService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/WorkflowService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/BusinessTripServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/BusinessTripServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/FileServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/FileServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/PettyCashServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/PettyCashServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/StatisticsServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/StatisticsServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/WorkflowServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/service/impl/WorkflowServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO$DeptStatItem.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO$DeptStatItem.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO$MonthStatItem.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO$MonthStatItem.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/CashStatisticsVO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/MenuVO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/MenuVO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$DeptStatItem.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$DeptStatItem.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$MonthStatItem.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$MonthStatItem.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$UserStatItem.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO$UserStatItem.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/TripStatisticsVO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/UserInfoVO.class" beforeDir="false" afterPath="$PROJECT_DIR$/backend/target/classes/com/approval/vo/UserInfoVO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/MainLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/MainLayout.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/Dashboard.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/Dashboard.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/business-trip/Apply.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/business-trip/Apply.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/business-trip/MyList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/business-trip/MyList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/petty-cash/Apply.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/petty-cash/Apply.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/petty-cash/MyList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/petty-cash/MyList.vue" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <excluded-from-favorite>
+      <branch-storage>
+        <map>
+          <entry type="REMOTE">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="origin/master" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </excluded-from-favorite>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;lifeing1&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/lifeing1/Financial-Approval-System.git&quot;,
+    &quot;accountId&quot;: &quot;5db39d3c-c403-4ec8-957c-ae28ae2d19a7&quot;
+  }
+}</component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="customMavenHome" value="/usr/local/apache-maven-3.9.11" />
+        <option name="localRepository" value="/usr/local/apache-maven-3.9.11/repository" />
+        <option name="mavenHomeTypeForPersistence" value="CUSTOM" />
+        <option name="useMavenConfig" value="false" />
+        <option name="userSettingsFile" value="/usr/local/apache-maven-3.9.11/conf/settings.xml" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="35MiPEUtEvMYAaYQiubipYC1FS9" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Maven.approval-system [clean].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Notification.DisplayName-DoNotAsk-DatabaseConfigFileWatcher.found": "发现新的/更新的数据库配置",
+    "Notification.DoNotAsk-DatabaseConfigFileWatcher.found": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "SHELLCHECK.PATH": "我会在意",
+    "Spring Boot.ApprovalSystemApplication.executor": "Debug",
+    "git-widget-placeholder": "master",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/cwf/Documents/AiProjects/Approval",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "项目",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "Qoder",
+    "ts.external.directory.path": "/Applications/IntelliJ IDEA.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="ReactorSettings">
+    <option name="notificationShown" value="true" />
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ApprovalSystemApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="approval-system" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.approval.ApprovalSystemApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.27397.103" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-IU-252.27397.103" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="1b6317ae-e5a0-4c9d-9851-aa8f2ead94ea" name="更改" comment="" />
+      <changelist id="" name="不提交" comment="" />
+      <created>1762926314749</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762926314749</updated>
+      <workItem from="1762926315822" duration="307000" />
+      <workItem from="1762926658199" duration="349000" />
+      <workItem from="1762928401242" duration="1250000" />
+      <workItem from="1762931007959" duration="103000" />
+      <workItem from="1762931119257" duration="76000" />
+      <workItem from="1762931236649" duration="11000" />
+      <workItem from="1762931263584" duration="282000" />
+      <workItem from="1762931594543" duration="240000" />
+      <workItem from="1762931843110" duration="34000" />
+      <workItem from="1762931886847" duration="27000" />
+      <workItem from="1762931923987" duration="38000" />
+      <workItem from="1762932021118" duration="269000" />
+      <workItem from="1762932307512" duration="50000" />
+      <workItem from="1762932384597" duration="102000" />
+      <workItem from="1762932494352" duration="2952000" />
+      <workItem from="1762936133048" duration="699000" />
+      <workItem from="1762937668984" duration="2688000" />
+      <workItem from="1762940375744" duration="1861000" />
+      <workItem from="1762943178684" duration="1643000" />
+      <workItem from="1762951715048" duration="3097000" />
+      <workItem from="1763138365822" duration="1144000" />
+      <workItem from="1763175447447" duration="2859000" />
+      <workItem from="1763636659681" duration="1809000" />
+      <workItem from="1763646030430" duration="844000" />
+      <workItem from="1763646891079" duration="2334000" />
+      <workItem from="1763650610723" duration="404000" />
+      <workItem from="1763706964869" duration="19723000" />
+    </task>
+    <task id="LOCAL-00001" summary="优化不需要登录验证的路径">
+      <option name="closed" value="true" />
+      <created>1763648035166</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1763648035166</updated>
+    </task>
+    <task id="LOCAL-00002" summary=".gitignore文件上传">
+      <option name="closed" value="true" />
+      <created>1763786828394</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1763786828394</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/master" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="master" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="优化不需要登录验证的路径" />
+    <MESSAGE value=".gitignore文件上传" />
+    <option name="LAST_COMMIT_MESSAGE" value=".gitignore文件上传" />
+  </component>
+</project>

@@ -96,7 +96,7 @@ const columns = [
   {
     title: '出差时间',
     key: 'tripDate',
-    width: 200,
+    width: 220,
     render: (row) => `${row.startDate} ~ ${row.endDate}`
   },
   {
@@ -116,8 +116,8 @@ const columns = [
   },
   {
     title: '申请时间',
-    key: 'createTime',
-    width: 180
+    key: 'applyDate',
+    width: 150
   },
   {
     title: '操作',
