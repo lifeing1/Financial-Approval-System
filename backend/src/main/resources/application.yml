@@ -1,6 +1,8 @@
 spring:
   application:
     name: approval-system
+  profiles:
+    active: local  # 使用本地配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/approval_system?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
@@ -58,7 +60,7 @@ file:
 aliyun:
   oss:
     endpoint: oss-cn-hangzhou.aliyuncs.com  # 根据实际区域修改
-    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}  # 替换为你的AccessKey ID
-    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}  # 替换为你的AccessKey Secret
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}  # 可通过设置环境变量匹配AccessKey ID
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
     bucket-name: cwf-factory  # 替换为你的Bucket名称
     base-url: https://cwf-factory.oss-cn-hangzhou.aliyuncs.com  # 文件访问基础URL

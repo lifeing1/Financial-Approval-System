@@ -81,7 +81,7 @@ public class BusinessTripController {
     @Operation(summary = "查询详情")
     @GetMapping("/{id}")
     public Result<?> getDetail(@PathVariable Long id) {
-        return Result.success(businessTripService.getDetail(id));
+        return Result.success(businessTripService.getDetailWithExpenses(id));
     }
     
     /**

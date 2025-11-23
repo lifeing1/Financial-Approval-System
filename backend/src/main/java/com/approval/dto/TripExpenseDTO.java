@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 出差费用明细 DTO
@@ -20,7 +21,7 @@ public class TripExpenseDTO {
     private String remark;
     
     /**
-     * 附件URL（多个文件用逗号分隔）
+     * 附件URL列表
      */
-    private String attachments;
+    private List<String> attachments;
 }
