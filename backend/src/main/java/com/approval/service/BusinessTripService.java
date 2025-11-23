@@ -2,6 +2,7 @@ package com.approval.service;
 
 import com.approval.dto.BusinessTripDTO;
 import com.approval.entity.BusinessTrip;
+import com.approval.vo.BusinessTripVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
@@ -39,6 +40,11 @@ public interface BusinessTripService {
      * 查询详情
      */
     BusinessTrip getDetail(Long id);
+    
+    /**
+     * 查询详情（包含费用明细和附件）
+     */
+    BusinessTripVO getDetailWithExpenses(Long id);
     
     /**
      * 审批

@@ -563,8 +563,8 @@ const handleSaveDraft = async () => {
         expenseType: expense.expenseType,
         amount: expense.amount,
         remark: expense.remark,
-        // 使用uploadedUrls（已上传到OSS的URL），如果没有则为空
-        attachments: expense.uploadedUrls ? expense.uploadedUrls.join(',') : ''
+        // 使用uploadedUrls（已上传到OSS的URL），如果没有则为空数组
+        attachments: expense.uploadedUrls || []
       }))
     }
     
