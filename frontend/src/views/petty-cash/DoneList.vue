@@ -9,6 +9,55 @@
         @update:page="handlePageChange"
       />
     </n-card>
+    
+    <!-- 详情弹窗 -->
+    <n-modal
+      v-model:show="showDetailModal"
+      preset="card"
+      title="备用金申请详情"
+      style="width: 700px"
+      :bordered="false"
+    >
+      <n-spin :show="detailLoading">
+        <n-descriptions v-if="detailData" :column="2" bordered>
+          <n-descriptions-item label="申请编号">
+            {{ detailData.applyNo }}
+          </n-descriptions-item>
+          <n-descriptions-item label="申请人">
+            {{ detailData.userName }} ({{ detailData.deptName }})
+          </n-descriptions-item>
+          <n-descriptions-item label="申请事由" :span="2">
+            {{ detailData.reason }}
+          </n-descriptions-item>
+          <n-descriptions-item label="申请金额">
+            <span style="color: #18a058; font-weight: 600;">¥{{ detailData.amount || 0 }}</span>
+          </n-descriptions-item>
+          <n-descriptions-item label="使用期限">
+            {{ detailData.usePeriod || '-' }}
+          </n-descriptions-item>
+          <n-descriptions-item v-if="detailData.remark" label="备注" :span="2">
+            {{ detailData.remark }}
+          </n-descriptions-item>
+          <n-descriptions-item label="申请时间" :span="2">
+            {{ detailData.createTime }}
+          </n-descriptions-item>
+          <n-descriptions-item label="审批结果">
+            <n-tag :type="getStatusTag(detailData.status).type">
+              {{ getStatusTag(detailData.status).label }}
+            </n-tag>
+          </n-descriptions-item>
+          <n-descriptions-item label="审批时间">
+            {{ detailData.approveTime || '-' }}
+          </n-descriptions-item>
+        </n-descriptions>
+      </n-spin>
+      
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showDetailModal = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -18,12 +67,22 @@ import {
   NCard,
   NDataTable,
   NButton, 
-  NTag 
+  NTag,
+  NModal,
+  NDescriptions,
+  NDescriptionsItem,
+  NSpin,
+  NSpace,
+  useMessage
 } from 'naive-ui'
-import { getDoneList } from '@/api/pettyCash'
+import { getDoneList, getDetail } from '@/api/pettyCash'
 
+const message = useMessage()
 const loading = ref(false)
 const tableData = ref([])
+const showDetailModal = ref(false)
+const detailLoading = ref(false)
+const detailData = ref(null)
 
 const pagination = ref({
   page: 1,
@@ -85,8 +144,19 @@ const handlePageChange = (page) => {
   loadData()
 }
 
-const handleView = (id) => {
-  console.log('查看', id)
+const handleView = async (id) => {
+  try {
+    showDetailModal.value = true
+    detailLoading.value = true
+    const res = await getDetail(id)
+    detailData.value = res.data
+  } catch (error) {
+    console.error('获取详情失败：', error)
+    message.error('获取详情失败')
+    showDetailModal.value = false
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 onMounted(() => {

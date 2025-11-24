@@ -5,8 +5,10 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.approval.common.exception.BusinessException;
 import com.approval.dto.LoginDTO;
 import com.approval.entity.SysDept;
+import com.approval.entity.SysRole;
 import com.approval.entity.SysUser;
 import com.approval.mapper.SysDeptMapper;
+import com.approval.mapper.SysRoleMapper;
 import com.approval.mapper.SysUserMapper;
 import com.approval.service.AuthService;
 import com.approval.vo.MenuVO;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 认证服务实现
@@ -29,6 +32,7 @@ public class AuthServiceImpl implements AuthService {
     
     private final SysUserMapper userMapper;
     private final SysDeptMapper deptMapper;
+    private final SysRoleMapper roleMapper;
     
     @Override
     public Map<String, Object> login(LoginDTO loginDTO) {
@@ -88,8 +92,14 @@ public class AuthServiceImpl implements AuthService {
             }
         }
         
-        // TODO: 查询用户角色和权限
-        userInfo.setRoles(new ArrayList<>());
+        // 查询用户角色
+        List<SysRole> roles = roleMapper.selectRolesByUserId(userId);
+        List<String> roleNames = roles.stream()
+                .map(SysRole::getRoleName)
+                .collect(Collectors.toList());
+        userInfo.setRoles(roleNames);
+        
+        // TODO: 查询用户权限
         userInfo.setPermissions(new ArrayList<>());
         
         return userInfo;

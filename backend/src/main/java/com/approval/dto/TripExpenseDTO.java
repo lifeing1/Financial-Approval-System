@@ -21,7 +21,7 @@ public class TripExpenseDTO {
     private String remark;
     
     /**
-     * 附件URL列表
+     * 附件列表（包含文件名和URL）
      */
-    private List<String> attachments;
+    private List<AttachmentDTO> attachments;
 }

@@ -88,9 +88,9 @@ public class BusinessTripController {
      * 审批通过
      */
     @Operation(summary = "审批通过")
-    @PostMapping("/approve/{id}")
-    public Result<?> approve(@PathVariable Long id, @RequestParam String opinion) {
-        businessTripService.approve(id, opinion);
+    @PostMapping("/approve/{taskId}")
+    public Result<?> approve(@PathVariable String taskId, @RequestParam String opinion) {
+        businessTripService.approve(taskId, opinion);
         return Result.success("审批成功");
     }
     
@@ -98,9 +98,9 @@ public class BusinessTripController {
      * 审批驳回
      */
     @Operation(summary = "审批驳回")
-    @PostMapping("/reject/{id}")
-    public Result<?> reject(@PathVariable Long id, @RequestParam String opinion) {
-        businessTripService.reject(id, opinion);
+    @PostMapping("/reject/{taskId}")
+    public Result<?> reject(@PathVariable String taskId, @RequestParam String opinion) {
+        businessTripService.reject(taskId, opinion);
         return Result.success("驳回成功");
     }
 }

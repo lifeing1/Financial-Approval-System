@@ -4,11 +4,22 @@ import cn.hutool.core.util.StrUtil;
 import com.approval.dto.ProcessDefinitionDTO;
 import com.approval.dto.ProcessDeployRequest;
 import com.approval.dto.ProcessNodeDTO;
+import com.approval.entity.ApprovalOpinion;
+import com.approval.entity.BusinessTrip;
+import com.approval.entity.PettyCash;
 import com.approval.entity.ProcessDefinitionInfo;
 import com.approval.entity.ProcessNode;
+import com.approval.entity.SysDept;
+import com.approval.entity.SysUser;
+import com.approval.mapper.ApprovalOpinionMapper;
+import com.approval.mapper.BusinessTripMapper;
+import com.approval.mapper.PettyCashMapper;
 import com.approval.mapper.ProcessDefinitionInfoMapper;
 import com.approval.mapper.ProcessNodeMapper;
+import com.approval.mapper.SysDeptMapper;
+import com.approval.mapper.SysUserMapper;
 import com.approval.service.WorkflowService;
+import com.approval.vo.TaskVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +61,11 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final TaskService taskService;
     private final ProcessDefinitionInfoMapper definitionInfoMapper;
     private final ProcessNodeMapper nodeMapper;
+    private final ApprovalOpinionMapper opinionMapper;
+    private final BusinessTripMapper businessTripMapper;
+    private final PettyCashMapper pettyCashMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysDeptMapper sysDeptMapper;
     
     private static final String BPMN_RESOURCE_PATH = "classpath:processes/*.bpmn";
     
@@ -140,6 +156,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deployPresetBpmn(String fileName, String processName) {
+        log.info("开始部署预置流程，文件名：{}，流程名称：{}", fileName, processName);
         try {
             // 1. 从 classpath 加载 BPMN 文件
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
@@ -152,10 +169,12 @@ public class WorkflowServiceImpl implements WorkflowService {
             InputStream inputStream = resource.getInputStream();
             
             // 2. 部署到 Flowable 引擎
+            log.info("开始部署到Flowable引擎...");
             Deployment deployment = repositoryService.createDeployment()
                     .name(processName)
                     .addInputStream(fileName, inputStream)
                     .deploy();
+            log.info("Flowable部署成功，部署ID：{}", deployment.getId());
             
             // 3. 获取流程定义信息
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
@@ -165,12 +184,34 @@ public class WorkflowServiceImpl implements WorkflowService {
             if (processDefinition == null) {
                 throw new RuntimeException("流程定义获取失败");
             }
+            log.info("获取流程定义成功，流程KEY：{}，流程ID：{}", 
+                    processDefinition.getKey(), processDefinition.getId());
             
             // 4. 保存或更新流程定义扩展信息
+            log.info("开始保存流程定义扩展信息到process_definition_info表...");
+            
+            // 先查询正常记录
             ProcessDefinitionInfo existingInfo = definitionInfoMapper.selectOne(
                     new LambdaQueryWrapper<ProcessDefinitionInfo>()
                             .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
             );
+            
+            // 如果没有正常记录，查询是否有已删除的记录
+            if (existingInfo == null) {
+                existingInfo = definitionInfoMapper.selectOne(
+                        new LambdaQueryWrapper<ProcessDefinitionInfo>()
+                                .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
+                                .eq(ProcessDefinitionInfo::getDeleted, 1) // 查询已删除的记录
+                                .last("LIMIT 1")
+                );
+                if (existingInfo != null) {
+                    log.info("发现已删除的记录，ID：{}，准备恢复并更新", existingInfo.getId());
+                    // 恢复记录（将 deleted 设为 0）
+                    existingInfo.setDeleted(0);
+                }
+            }
+            
+            log.info("查询现有记录结果，existingInfo: {}", existingInfo != null ? existingInfo.getId() : "null");
             
             if (existingInfo != null) {
                 // 更新现有记录
@@ -179,30 +220,70 @@ public class WorkflowServiceImpl implements WorkflowService {
                 existingInfo.setProcessDefinitionId(processDefinition.getId());
                 existingInfo.setVersion(processDefinition.getVersion());
                 existingInfo.setStatus(1); // 激活状态
-                definitionInfoMapper.updateById(existingInfo);
-            } else {
-                // 新建记录
-                ProcessDefinitionInfo definitionInfo = new ProcessDefinitionInfo();
-                definitionInfo.setProcessKey(processDefinition.getKey());
-                definitionInfo.setProcessName(processName);
-                definitionInfo.setDeploymentId(deployment.getId());
-                definitionInfo.setProcessDefinitionId(processDefinition.getId());
-                definitionInfo.setVersion(processDefinition.getVersion());
-                definitionInfo.setStatus(1);
-                // 根据流程 key 猜测分类
+                // 根据流程 key 更新分类
                 if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
-                    definitionInfo.setCategory("business_trip");
+                    existingInfo.setCategory("business_trip");
                 } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
-                    definitionInfo.setCategory("petty_cash");
+                    existingInfo.setCategory("petty_cash");
                 }
-                definitionInfoMapper.insert(definitionInfo);
+                    definitionInfoMapper.updateById(existingInfo);
+                log.info("更新流程定义信息成功，流程KEY：{}，版本：{}", processDefinition.getKey(), processDefinition.getVersion());
+            } else {
+                // 新建记录 - 使用try-catch处理可能的重复键异常
+                log.info("准备插入新记录到process_definition_info表...");
+                try {
+                    ProcessDefinitionInfo definitionInfo = new ProcessDefinitionInfo();
+                    definitionInfo.setProcessKey(processDefinition.getKey());
+                    definitionInfo.setProcessName(processName);
+                    definitionInfo.setDeploymentId(deployment.getId());
+                    definitionInfo.setProcessDefinitionId(processDefinition.getId());
+                    definitionInfo.setVersion(processDefinition.getVersion());
+                    definitionInfo.setStatus(1);
+                    // 根据流程 key 猜测分类
+                    if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
+                        definitionInfo.setCategory("business_trip");
+                    } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
+                        definitionInfo.setCategory("petty_cash");
+                    }
+                    
+                    log.info("准备执行insert操作，processKey: {}, processName: {}", 
+                            definitionInfo.getProcessKey(), definitionInfo.getProcessName());
+                    int result = definitionInfoMapper.insert(definitionInfo);
+                    log.info("新增流程定义信息SUCCESS，流程KEY：{}，版本：{}，插入结果：{}，生成ID：{}", 
+                            processDefinition.getKey(), processDefinition.getVersion(), result, definitionInfo.getId());
+                } catch (org.springframework.dao.DuplicateKeyException e) {
+                    // 如果插入时发现重复（并发情况），则查询并更新
+                    log.warn("检测到重复的流程KEY（DuplicateKeyException），转为更新操作：{}", processDefinition.getKey());
+                    ProcessDefinitionInfo duplicateInfo = definitionInfoMapper.selectOne(
+                            new LambdaQueryWrapper<ProcessDefinitionInfo>()
+                                    .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
+                    );
+                    if (duplicateInfo != null) {
+                        duplicateInfo.setProcessName(processName);
+                        duplicateInfo.setDeploymentId(deployment.getId());
+                        duplicateInfo.setProcessDefinitionId(processDefinition.getId());
+                        duplicateInfo.setVersion(processDefinition.getVersion());
+                        duplicateInfo.setStatus(1);
+                        if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
+                            duplicateInfo.setCategory("business_trip");
+                        } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
+                            duplicateInfo.setCategory("petty_cash");
+                        }
+                        definitionInfoMapper.updateById(duplicateInfo);
+                        log.info("重复KEY更新成功");
+                    }
+                } catch (Exception ex) {
+                    log.error("插入process_definition_info表失败，异常类型：{}", ex.getClass().getName(), ex);
+                    throw ex;
+                }
             }
             
-            log.info("预置流程部署成功，流程KEY：{}，版本：{}", processDefinition.getKey(), processDefinition.getVersion());
+            log.info("预置流程部署完成，流程KEY：{}，版本：{}，准备返回部署ID", 
+                    processDefinition.getKey(), processDefinition.getVersion());
             return deployment.getId();
         } catch (Exception e) {
-            log.error("预置流程部署失败", e);
-            throw new RuntimeException("预置流程部署失败：" + e.getMessage());
+            log.error("预置流程部署失败，错误信息：{}", e.getMessage(), e);
+            throw new RuntimeException("预置流程部署失败：" + e.getMessage(), e);
         }
     }
     
@@ -355,6 +436,9 @@ public class WorkflowServiceImpl implements WorkflowService {
         Page<ProcessDefinitionInfo> infoPage = definitionInfoMapper.selectPage(
                 new Page<>(current, size), wrapper);
         
+        log.info("查询流程定义列表，总数：{}，当前页：{}，每页大小：{}，分类：{}", 
+                infoPage.getTotal(), current, size, category);
+        
         List<ProcessDefinitionDTO> dtoList = infoPage.getRecords().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -486,22 +570,271 @@ public class WorkflowServiceImpl implements WorkflowService {
     
     @Override
     public String startProcess(String processKey, String businessKey, Long userId) {
-        // TODO: 实现流程启动逻辑
-        return null;
+        try {
+            // 1. 获取流程定义
+            ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(processKey)
+                    .latestVersion()
+                    .singleResult();
+            
+            if (processDefinition == null) {
+                throw new RuntimeException("流程定义不存在：" + processKey);
+            }
+            
+            if (processDefinition.isSuspended()) {
+                throw new RuntimeException("流程已被暂停，无法启动");
+            }
+            
+            // 2. 设置流程变量
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("userId", userId);
+            variables.put("businessKey", businessKey);
+            
+            // 3. 启动流程实例
+            org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
+                    .startProcessInstanceByKey(processKey, businessKey, variables);
+            
+            log.info("流程实例启动成功，流程KEY：{}，实例ID：{}，业务KEY：{}", 
+                    processKey, processInstance.getId(), businessKey);
+            
+            return processInstance.getId();
+            
+        } catch (Exception e) {
+            log.error("启动流程失败", e);
+            throw new RuntimeException("启动流程失败：" + e.getMessage());
+        }
     }
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void completeTask(String taskId, String comment, boolean approved) {
-        // TODO: 实现任务完成逻辑
+        try {
+            // 1. 获取任务信息
+            org.flowable.task.api.Task task = taskService.createTaskQuery()
+                    .taskId(taskId)
+                    .singleResult();
+            
+            if (task == null) {
+                throw new RuntimeException("任务不存在：" + taskId);
+            }
+            
+            // 2. 获取当前用户信息
+            Long currentUserId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+            SysUser currentUser = sysUserMapper.selectById(currentUserId);
+            
+            // 3. 获取业务KEY
+            org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
+                    .createProcessInstanceQuery()
+                    .processInstanceId(task.getProcessInstanceId())
+                    .singleResult();
+            
+            String businessKey = processInstance.getBusinessKey();
+            
+            // 4. 保存审批意见
+            ApprovalOpinion opinion = new ApprovalOpinion();
+            opinion.setBusinessId(Long.parseLong(businessKey));
+            opinion.setTaskId(taskId);
+            opinion.setApproverId(currentUserId);
+            opinion.setApproverName(currentUser.getRealName());
+            opinion.setOpinion(comment);
+            opinion.setAction(approved ? "APPROVE" : "REJECT");
+            
+            // 根据流程定义KEY判断业务类型
+            String processKey = task.getProcessDefinitionId().split(":")[0];
+            if (processKey.contains("businessTrip") || processKey.contains("trip")) {
+                opinion.setBusinessType("business_trip");
+            } else if (processKey.contains("pettyCash") || processKey.contains("cash")) {
+                opinion.setBusinessType("petty_cash");
+            }
+            
+            opinionMapper.insert(opinion);
+            
+            // 5. 设置流程变量
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("approved", approved);
+            variables.put("comment", comment);
+            variables.put("approverId", currentUserId);
+            
+            // 6. 完成任务
+            taskService.complete(taskId, variables);
+            
+            // 7. 检查流程是否结束，更新业务状态
+            org.flowable.engine.runtime.ProcessInstance updatedInstance = runtimeService
+                    .createProcessInstanceQuery()
+                    .processInstanceId(task.getProcessInstanceId())
+                    .singleResult();
+            
+            if (updatedInstance == null) {
+                // 流程已结束，更新业务状态
+                updateBusinessStatus(businessKey, processKey, approved);
+            }
+            
+            log.info("任务完成成功，任务ID：{}，审批结果：{}", taskId, approved ? "通过" : "驳回");
+            
+        } catch (Exception e) {
+            log.error("完成任务失败", e);
+            throw new RuntimeException("完成任务失败：" + e.getMessage());
+        }
     }
     
     @Override
-    public Page<?> getUserTasks(Long userId, Integer current, Integer size) {
-        // TODO: 实现获取用户待办任务
-        return null;
+    public Page<TaskVO> getUserTasks(Long userId, Integer current, Integer size) {
+        try {
+            Page<TaskVO> resultPage = new Page<>(current, size);
+            
+            // 1. 查询用户待办任务
+            org.flowable.task.api.TaskQuery taskQuery = taskService.createTaskQuery()
+                    .taskAssignee(userId.toString())
+                    .orderByTaskCreateTime()
+                    .desc();
+            
+            // 分页查询
+            long total = taskQuery.count();
+            int firstResult = (current - 1) * size;
+            List<org.flowable.task.api.Task> tasks = taskQuery
+                    .listPage(firstResult, size);
+            
+            // 2. 转换为VO
+            List<TaskVO> taskVOList = new java.util.ArrayList<>();
+            
+            for (org.flowable.task.api.Task task : tasks) {
+                TaskVO vo = new TaskVO();
+                vo.setTaskId(task.getId());
+                vo.setTaskName(task.getName());
+                vo.setProcessInstanceId(task.getProcessInstanceId());
+                vo.setCreateTime(task.getCreateTime().toInstant()
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime());
+                vo.setPriority(task.getPriority());
+                
+                // 获取流程实例信息
+                org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
+                        .createProcessInstanceQuery()
+                        .processInstanceId(task.getProcessInstanceId())
+                        .singleResult();
+                
+                if (processInstance != null) {
+                    String businessKey = processInstance.getBusinessKey();
+                    vo.setBusinessKey(businessKey);
+                    
+                    // 获取流程定义KEY
+                    String processDefId = processInstance.getProcessDefinitionId();
+                    String processKey = processDefId.split(":")[0];
+                    vo.setProcessKey(processKey);
+                    
+                    // 获取流程名称
+                    ProcessDefinitionInfo info = definitionInfoMapper.selectOne(
+                            new LambdaQueryWrapper<ProcessDefinitionInfo>()
+                                    .eq(ProcessDefinitionInfo::getProcessKey, processKey)
+                    );
+                    if (info != null) {
+                        vo.setProcessName(info.getProcessName());
+                    }
+                    
+                    // 填充业务信息
+                    fillBusinessInfo(vo, businessKey, processKey);
+                }
+                
+                taskVOList.add(vo);
+            }
+            
+            resultPage.setRecords(taskVOList);
+            resultPage.setTotal(total);
+            
+            return resultPage;
+            
+        } catch (Exception e) {
+            log.error("查询用户待办任务失败", e);
+            throw new RuntimeException("查询待办任务失败：" + e.getMessage());
+        }
     }
     
     // ==================== 私有辅助方法 ====================
+    
+    /**
+     * 更新业务状态
+     */
+    private void updateBusinessStatus(String businessKey, String processKey, boolean approved) {
+        try {
+            Long businessId = Long.parseLong(businessKey);
+            int status = approved ? 2 : 3; // 2-已通过，3-已驳回
+            
+            if (processKey.contains("businessTrip") || processKey.contains("trip")) {
+                // 更新出差申请状态
+                BusinessTrip trip = businessTripMapper.selectById(businessId);
+                if (trip != null) {
+                    trip.setStatus(status);
+                    businessTripMapper.updateById(trip);
+                }
+            } else if (processKey.contains("pettyCash") || processKey.contains("cash")) {
+                // 更新备用金申请状态
+                PettyCash cash = pettyCashMapper.selectById(businessId);
+                if (cash != null) {
+                    cash.setStatus(status);
+                    pettyCashMapper.updateById(cash);
+                }
+            }
+        } catch (Exception e) {
+            log.error("更新业务状态失败", e);
+        }
+    }
+    
+    /**
+     * 填充业务信息
+     */
+    private void fillBusinessInfo(TaskVO vo, String businessKey, String processKey) {
+        try {
+            Long businessId = Long.parseLong(businessKey);
+            
+            if (processKey.contains("businessTrip") || processKey.contains("trip")) {
+                vo.setBusinessType("business_trip");
+                BusinessTrip trip = businessTripMapper.selectById(businessId);
+                if (trip != null) {
+                    vo.setApplyNo(trip.getApplyNo());
+                    vo.setReason(trip.getReason());
+                    vo.setApplicantId(trip.getUserId());
+                    
+                    // 获取申请人信息
+                    SysUser user = sysUserMapper.selectById(trip.getUserId());
+                    if (user != null) {
+                        vo.setApplicantName(user.getRealName());
+                    }
+                    
+                    // 获取部门信息
+                    if (trip.getDeptId() != null) {
+                        SysDept dept = sysDeptMapper.selectById(trip.getDeptId());
+                        if (dept != null) {
+                            vo.setDeptName(dept.getDeptName());
+                        }
+                    }
+                }
+            } else if (processKey.contains("pettyCash") || processKey.contains("cash")) {
+                vo.setBusinessType("petty_cash");
+                PettyCash cash = pettyCashMapper.selectById(businessId);
+                if (cash != null) {
+                    vo.setApplyNo(cash.getApplyNo());
+                    vo.setReason(cash.getReason());
+                    vo.setApplicantId(cash.getUserId());
+                    
+                    // 获取申请人信息
+                    SysUser user = sysUserMapper.selectById(cash.getUserId());
+                    if (user != null) {
+                        vo.setApplicantName(user.getRealName());
+                    }
+                    
+                    // 获取部门信息
+                    if (cash.getDeptId() != null) {
+                        SysDept dept = sysDeptMapper.selectById(cash.getDeptId());
+                        if (dept != null) {
+                            vo.setDeptName(dept.getDeptName());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("填充业务信息失败", e);
+        }
+    }
     
     private ProcessDefinitionInfo getProcessInfoByKey(String processKey) {
         ProcessDefinitionInfo info = definitionInfoMapper.selectOne(
@@ -526,7 +859,27 @@ public class WorkflowServiceImpl implements WorkflowService {
         dto.setProcessDefinitionId(info.getProcessDefinitionId());
         dto.setVersion(info.getVersion());
         dto.setStatus(info.getStatus());
-        dto.setDeployTime(info.getCreateTime());
+        
+        // 从 Flowable Deployment 表中获取实际部署时间
+        try {
+            if (info.getDeploymentId() != null) {
+                Deployment deployment = repositoryService.createDeploymentQuery()
+                        .deploymentId(info.getDeploymentId())
+                        .singleResult();
+                if (deployment != null && deployment.getDeploymentTime() != null) {
+                    dto.setDeployTime(deployment.getDeploymentTime().toInstant()
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDateTime());
+                } else {
+                    dto.setDeployTime(info.getCreateTime());
+                }
+            } else {
+                dto.setDeployTime(info.getCreateTime());
+            }
+        } catch (Exception e) {
+            log.warn("获取部署时间失败，使用创建时间：{}", info.getProcessKey());
+            dto.setDeployTime(info.getCreateTime());
+        }
         
         return dto;
     }

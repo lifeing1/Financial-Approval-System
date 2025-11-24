@@ -9,6 +9,110 @@
         @update:page="handlePageChange"
       />
     </n-card>
+    
+    <!-- 详情弹窗 -->
+    <n-modal
+      v-model:show="showDetailModal"
+      preset="card"
+      title="出差申请详情"
+      style="width: 800px"
+      :bordered="false"
+    >
+      <n-spin :show="detailLoading">
+        <n-descriptions v-if="detailData" :column="2" bordered>
+          <n-descriptions-item label="申请编号">
+            {{ detailData.applyNo }}
+          </n-descriptions-item>
+          <n-descriptions-item label="申请人">
+            {{ detailData.userName }} ({{ detailData.deptName }})
+          </n-descriptions-item>
+          <n-descriptions-item label="出差事由" :span="2">
+            {{ detailData.reason }}
+          </n-descriptions-item>
+          <n-descriptions-item label="出发地">
+            {{ detailData.startPlace }}
+          </n-descriptions-item>
+          <n-descriptions-item label="目的地">
+            {{ detailData.destination }}
+          </n-descriptions-item>
+          <n-descriptions-item label="开始日期">
+            {{ detailData.startDate }}
+          </n-descriptions-item>
+          <n-descriptions-item label="结束日期">
+            {{ detailData.endDate }}
+          </n-descriptions-item>
+          <n-descriptions-item label="交通方式" :span="2">
+            {{ detailData.transportModes }}
+          </n-descriptions-item>
+          <n-descriptions-item label="预计费用" :span="2">
+            <span style="color: #18a058; font-weight: 600;">¥{{ detailData.totalAmount || 0 }}</span>
+          </n-descriptions-item>
+          <n-descriptions-item v-if="detailData.remark" label="备注" :span="2">
+            {{ detailData.remark }}
+          </n-descriptions-item>
+          <n-descriptions-item label="申请时间" :span="2">
+            {{ detailData.createTime }}
+          </n-descriptions-item>
+          <n-descriptions-item label="审批结果">
+            <n-tag :type="getStatusTag(detailData.status).type">
+              {{ getStatusTag(detailData.status).label }}
+            </n-tag>
+          </n-descriptions-item>
+          <n-descriptions-item label="审批时间">
+            {{ detailData.approveTime || '-' }}
+          </n-descriptions-item>
+        </n-descriptions>
+        
+        <!-- 费用明细 -->
+        <n-divider v-if="detailData?.expenses?.length > 0">费用明细</n-divider>
+        <div v-if="detailData?.expenses?.length > 0" style="margin-top: 16px;">
+          <n-card
+            v-for="(expense, index) in detailData.expenses"
+            :key="index"
+            size="small"
+            style="margin-bottom: 12px;"
+          >
+            <n-descriptions :column="3" size="small">
+              <n-descriptions-item label="费用类型">
+                {{ expense.expenseType }}
+              </n-descriptions-item>
+              <n-descriptions-item label="金额">
+                <span style="color: #18a058; font-weight: 600;">¥{{ expense.amount }}</span>
+              </n-descriptions-item>
+              <n-descriptions-item label="备注">
+                {{ expense.remark || '-' }}
+              </n-descriptions-item>
+            </n-descriptions>
+            
+            <!-- 附件列表 -->
+            <div v-if="expense.attachments?.length > 0" style="margin-top: 12px;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 8px;">附件：</div>
+              <n-space>
+                <n-button
+                  v-for="(att, attIdx) in expense.attachments"
+                  :key="attIdx"
+                  text
+                  type="primary"
+                  size="small"
+                  @click="openAttachment(att.filePath)"
+                >
+                  <template #icon>
+                    <n-icon :component="AttachIcon" />
+                  </template>
+                  {{ att.fileName }}
+                </n-button>
+              </n-space>
+            </div>
+          </n-card>
+        </div>
+      </n-spin>
+      
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showDetailModal = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -18,12 +122,25 @@ import {
   NCard,
   NDataTable,
   NButton, 
-  NTag 
+  NTag,
+  NModal,
+  NDescriptions,
+  NDescriptionsItem,
+  NDivider,
+  NSpin,
+  NSpace,
+  NIcon,
+  useMessage
 } from 'naive-ui'
-import { getDoneList } from '@/api/businessTrip'
+import { AttachOutline as AttachIcon } from '@vicons/ionicons5'
+import { getDoneList, getDetail } from '@/api/businessTrip'
 
+const message = useMessage()
 const loading = ref(false)
 const tableData = ref([])
+const showDetailModal = ref(false)
+const detailLoading = ref(false)
+const detailData = ref(null)
 
 const pagination = ref({
   page: 1,
@@ -125,9 +242,23 @@ const handlePageChange = (page) => {
   loadData()
 }
 
-const handleView = (id) => {
-  // TODO: 查看详情
-  console.log('查看', id)
+const handleView = async (id) => {
+  try {
+    showDetailModal.value = true
+    detailLoading.value = true
+    const res = await getDetail(id)
+    detailData.value = res.data
+  } catch (error) {
+    console.error('获取详情失败：', error)
+    message.error('获取详情失败')
+    showDetailModal.value = false
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+const openAttachment = (url) => {
+  window.open(url, '_blank')
 }
 
 onMounted(() => {
