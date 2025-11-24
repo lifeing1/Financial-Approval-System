@@ -505,7 +505,11 @@ const uploadAllFilesToOss = async () => {
       const fileUploadPromises = expense.attachments.map(async (fileObj) => {
         try {
           const res = await uploadToOss(fileObj.file, 'expense/')
-          return res.data  // 返回OSS URL
+          // 返回文件名和URL的映射
+          return {
+            fileName: fileObj.name,
+            url: res.data
+          }
         } catch (error) {
           console.error(`文件 ${fileObj.name} 上传失败:`, error)
           throw error
@@ -513,7 +517,7 @@ const uploadAllFilesToOss = async () => {
       })
       
       uploadPromises.push(
-        Promise.all(fileUploadPromises).then(urls => ({ index: i, urls }))
+        Promise.all(fileUploadPromises).then(fileInfos => ({ index: i, fileInfos }))
       )
     }
   }
@@ -521,9 +525,9 @@ const uploadAllFilesToOss = async () => {
   // 等待所有文件上传完成
   const results = await Promise.all(uploadPromises)
   
-  // 将上传后的URL保存到对应的费用明细
-  results.forEach(({ index, urls }) => {
-    formData.expenses[index].uploadedUrls = urls
+  // 将上传后的文件信息保存到对应的费用明细
+  results.forEach(({ index, fileInfos }) => {
+    formData.expenses[index].uploadedUrls = fileInfos
   })
 }
 

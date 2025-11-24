@@ -70,19 +70,16 @@ public class ProcessDefinitionInfo implements Serializable {
     /**
      * 创建人
      */
-    @TableField(fill = FieldFill.INSERT)
     private Long createUser;
     
     /**
      * 创建时间
      */
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     
     /**
      * 更新时间
      */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     
     /**

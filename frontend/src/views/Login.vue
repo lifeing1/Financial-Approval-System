@@ -35,7 +35,7 @@
         
         <n-form-item>
           <n-checkbox v-model:checked="formData.rememberMe">
-            记住密码
+            记住我（七天内免登录）
           </n-checkbox>
         </n-form-item>
         
@@ -126,7 +126,7 @@ const handleLogin = async () => {
       return
     }
     
-    userStore.setToken(loginRes.data.token)
+    userStore.setToken(loginRes.data.token, formData.rememberMe)
     
     // 获取用户信息
     const userInfoRes = await getUserInfo()

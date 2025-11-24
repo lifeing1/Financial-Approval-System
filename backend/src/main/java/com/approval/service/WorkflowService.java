@@ -2,6 +2,7 @@ package com.approval.service;
 
 import com.approval.dto.ProcessDefinitionDTO;
 import com.approval.dto.ProcessDeployRequest;
+import com.approval.vo.TaskVO;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -85,5 +86,5 @@ public interface WorkflowService {
     /**
      * 获取用户待办任务
      */
-    Page<?> getUserTasks(Long userId, Integer current, Integer size);
+    Page<TaskVO> getUserTasks(Long userId, Integer current, Integer size);
 }

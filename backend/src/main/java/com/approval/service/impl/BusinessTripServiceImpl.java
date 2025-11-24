@@ -2,19 +2,24 @@ package com.approval.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.approval.common.exception.BusinessException;
+import com.approval.dto.AttachmentDTO;
 import com.approval.dto.BusinessTripDTO;
 import com.approval.dto.TripExpenseDTO;
 import com.approval.entity.Attachment;
 import com.approval.entity.BusinessTrip;
+import com.approval.entity.SysDept;
 import com.approval.entity.SysUser;
 import com.approval.entity.TripExpense;
 import com.approval.mapper.AttachmentMapper;
 import com.approval.mapper.BusinessTripMapper;
+import com.approval.mapper.SysDeptMapper;
 import com.approval.mapper.SysUserMapper;
 import com.approval.mapper.TripExpenseMapper;
 import com.approval.service.BusinessTripService;
+import com.approval.service.WorkflowService;
 import com.approval.vo.AttachmentVO;
 import com.approval.vo.BusinessTripVO;
+import com.approval.vo.TaskVO;
 import com.approval.vo.TripExpenseVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -43,6 +48,8 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     private final TripExpenseMapper tripExpenseMapper;
     private final AttachmentMapper attachmentMapper;
     private final SysUserMapper userMapper;
+    private final SysDeptMapper sysDeptMapper;
+    private final WorkflowService workflowService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -112,14 +119,12 @@ public class BusinessTripServiceImpl implements BusinessTripService {
                 
                 // 保存费用明细的附件
                 if (!CollectionUtils.isEmpty(expenseDTO.getAttachments())) {
-                    for (String fileUrl : expenseDTO.getAttachments()) {
+                    for (AttachmentDTO attachmentDTO : expenseDTO.getAttachments()) {
                         Attachment attachment = new Attachment();
                         attachment.setBusinessId(expense.getId());
                         attachment.setBusinessType("trip_expense");
-                        attachment.setFilePath(fileUrl);
-                        // 从URL中提取文件名
-                        String fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
-                        attachment.setFileName(fileName);
+                        attachment.setFilePath(attachmentDTO.getUrl());
+                        attachment.setFileName(attachmentDTO.getFileName());
                         attachment.setUploadUserId(userIds);
                         attachmentMapper.insert(attachment);
                     }
@@ -131,6 +136,7 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     }
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void submitApply(Long id) {
         BusinessTrip trip = businessTripMapper.selectById(id);
         if (trip == null) {
@@ -146,13 +152,23 @@ public class BusinessTripServiceImpl implements BusinessTripService {
             throw new BusinessException("只有草稿状态才能提交");
         }
         
-        // TODO: 启动工作流
-        trip.setStatus(1); // 审批中
-        businessTripMapper.updateById(trip);
+        // 启动工作流
+        try {
+            String processKey = "businessTrip"; // 出差申请流程定义KEY
+            String businessKey = id.toString();
+            String processInstanceId = workflowService.startProcess(processKey, businessKey, userId);
+            
+            // 更新申请状态和流程实例ID
+            trip.setStatus(1); // 审批中
+            trip.setProcessInstanceId(processInstanceId);
+            businessTripMapper.updateById(trip);
+        } catch (Exception e) {
+            throw new BusinessException("启动审批流程失败：" + e.getMessage());
+        }
     }
     
     @Override
-    public IPage<BusinessTrip> getMyApplyList(Page<BusinessTrip> page, Integer status) {
+    public IPage<BusinessTripVO> getMyApplyList(Page<BusinessTrip> page, Integer status) {
         Long userId = StpUtil.getLoginIdAsLong();
         LambdaQueryWrapper<BusinessTrip> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BusinessTrip::getUserId, userId);
@@ -160,19 +176,71 @@ public class BusinessTripServiceImpl implements BusinessTripService {
             wrapper.eq(BusinessTrip::getStatus, status);
         }
         wrapper.orderByDesc(BusinessTrip::getCreateTime);
-        return businessTripMapper.selectPage(page, wrapper);
+        
+        IPage<BusinessTrip> tripPage = businessTripMapper.selectPage(page, wrapper);
+        
+        // 转换为VO，填充用户名和部门名
+        IPage<BusinessTripVO> voPage = new Page<>(tripPage.getCurrent(), tripPage.getSize(), tripPage.getTotal());
+        List<BusinessTripVO> voList = new ArrayList<>();
+        
+        for (BusinessTrip trip : tripPage.getRecords()) {
+            BusinessTripVO vo = new BusinessTripVO();
+            BeanUtils.copyProperties(trip, vo);
+            
+            // 查询用户信息
+            SysUser user = userMapper.selectById(trip.getUserId());
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+            }
+            
+            // 查询部门信息
+            if (trip.getDeptId() != null) {
+                SysDept dept = sysDeptMapper.selectById(trip.getDeptId());
+                if (dept != null) {
+                    vo.setDeptName(dept.getDeptName());
+                }
+            }
+            
+            voList.add(vo);
+        }
+        
+        voPage.setRecords(voList);
+        return voPage;
     }
     
     @Override
-    public IPage<BusinessTrip> getTodoList(Page<BusinessTrip> page) {
-        // TODO: 查询当前用户的待办任务
-        return page;
+    public IPage<TaskVO> getTodoList(Page<BusinessTrip> page) {
+        // 查询当前用户的待办任务
+        Long userId = StpUtil.getLoginIdAsLong();
+        
+        // 调用工作流服务获取待办任务
+        Page<TaskVO> taskPage = workflowService.getUserTasks(userId, 
+                (int) page.getCurrent(), 
+                (int) page.getSize());
+        
+        // 过滤出差申请的任务
+        List<TaskVO> businessTripTasks = taskPage.getRecords().stream()
+                .filter(task -> "business_trip".equals(task.getBusinessType()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 构建返回结果
+        Page<TaskVO> resultPage = new Page<>(page.getCurrent(), page.getSize());
+        resultPage.setRecords(businessTripTasks);
+        resultPage.setTotal(businessTripTasks.size());
+        
+        return resultPage;
     }
     
     @Override
-    public IPage<BusinessTrip> getDoneList(Page<BusinessTrip> page) {
-        // TODO: 查询当前用户的已办任务
-        return page;
+    public IPage<TaskVO> getDoneList(Page<BusinessTrip> page) {
+        // 查询当前用户的已办任务
+        // 注：这里需要从工作流历史中查询，暂时返回空列表
+        // 完整实现需要Flowable的HistoryService
+        Page<TaskVO> resultPage = new Page<>(page.getCurrent(), page.getSize());
+        resultPage.setRecords(new ArrayList<>());
+        resultPage.setTotal(0);
+        
+        return resultPage;
     }
     
     @Override
@@ -233,22 +301,34 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     }
     
     @Override
-    public void approve(Long id, String opinion) {
-        // TODO: 完成审批操作
-        BusinessTrip trip = businessTripMapper.selectById(id);
-        if (trip == null) {
-            throw new BusinessException("申请不存在");
+    @Transactional(rollbackFor = Exception.class)
+    public void approve(String taskId, String opinion) {
+        // 完成审批操作
+        if (taskId == null || taskId.trim().isEmpty()) {
+            throw new BusinessException("任务ID不能为空");
+        }
+        
+        try {
+            // 调用工作流服务完成任务
+            workflowService.completeTask(taskId, opinion, true);
+        } catch (Exception e) {
+            throw new BusinessException("审批失败：" + e.getMessage());
         }
     }
     
     @Override
-    public void reject(Long id, String opinion) {
-        // TODO: 完成驳回操作
-        BusinessTrip trip = businessTripMapper.selectById(id);
-        if (trip == null) {
-            throw new BusinessException("申请不存在");
+    @Transactional(rollbackFor = Exception.class)
+    public void reject(String taskId, String opinion) {
+        // 完成驳回操作
+        if (taskId == null || taskId.trim().isEmpty()) {
+            throw new BusinessException("任务ID不能为空");
         }
-        trip.setStatus(3); // 已驳回
-        businessTripMapper.updateById(trip);
+        
+        try {
+            // 调用工作流服务完成任务（驳回）
+            workflowService.completeTask(taskId, opinion, false);
+        } catch (Exception e) {
+            throw new BusinessException("驳回失败：" + e.getMessage());
+        }
     }
 }

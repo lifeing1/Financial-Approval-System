@@ -11,6 +11,18 @@
         <n-descriptions-item label="部门">
           {{ userStore.userInfo?.deptName || '未分配' }}
         </n-descriptions-item>
+        <n-descriptions-item label="角色">
+          <n-space v-if="userStore.userInfo?.roles && userStore.userInfo.roles.length > 0">
+            <n-tag 
+              v-for="(role, index) in userStore.userInfo.roles" 
+              :key="index" 
+              type="info"
+            >
+              {{ role }}
+            </n-tag>
+          </n-space>
+          <span v-else style="color: #999">未分配</span>
+        </n-descriptions-item>
         <n-descriptions-item label="手机号">
           {{ userStore.userInfo?.phone }}
         </n-descriptions-item>
@@ -75,6 +87,8 @@ import {
   NFormItem,
   NInput,
   NButton,
+  NSpace,
+  NTag,
   useMessage 
 } from 'naive-ui'
 import { changePassword } from '@/api/auth'
