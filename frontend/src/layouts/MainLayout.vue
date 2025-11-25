@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { 
@@ -86,7 +86,7 @@ import {
   BarChartOutline,
   PersonOutline
 } from '@vicons/ionicons5'
-import { logout } from '@/api/auth'
+import { logout, getUserMenus } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,56 +99,64 @@ const activeKey = ref(route.path)
 
 const currentRoute = computed(() => route.meta.title || '工作台')
 
+// 图标映射
+const iconMap = {
+  'home': HomeOutline,
+  'airplane': AirplaneOutline,
+  'cash': CashOutline,
+  'git-network': GitNetworkOutline,
+  'bar-chart': BarChartOutline,
+  'person': PersonOutline
+}
+
 // 菜单选项
-const menuOptions = ref([
-  {
-    label: '工作台',
-    key: '/dashboard',
-    icon: () => h(HomeOutline)
-  },
-  {
-    label: '出差管理',
-    key: 'business-trip',
-    icon: () => h(AirplaneOutline),
-    children: [
-      { label: '出差申请', key: '/business-trip/apply' },
-      { label: '待办审批', key: '/business-trip/todo' },
-      { label: '已办审批', key: '/business-trip/done' },
-      { label: '我的申请', key: '/business-trip/my' }
-    ]
-  },
-  {
-    label: '备用金管理',
-    key: 'petty-cash',
-    icon: () => h(CashOutline),
-    children: [
-      { label: '备用金申请', key: '/petty-cash/apply' },
-      { label: '待办审批', key: '/petty-cash/todo' },
-      { label: '已办审批', key: '/petty-cash/done' },
-      { label: '我的申请', key: '/petty-cash/my' }
-    ]
-  },
-  {
-    label: '流程管理',
-    key: '/workflow/list',
-    icon: () => h(GitNetworkOutline)
-  },
-  {
-    label: '数据统计',
-    key: 'statistics',
-    icon: () => h(BarChartOutline),
-    children: [
-      { label: '出差统计', key: '/statistics/business-trip' },
-      { label: '备用金统计', key: '/statistics/petty-cash' }
-      // { label: '审批效率', key: '/statistics/efficiency' }
-    ]
-  },
-  {
-    label: '个人中心',
-    key: '/profile',
-    icon: () => h(PersonOutline)
+const menuOptions = ref([])
+
+// 从后端菜单数据构建前端菜单选项
+const buildMenuOptions = (menus) => {
+  if (!menus || menus.length === 0) return []
+  
+  return menus.map(menu => {
+    const option = {
+      label: menu.menuName,
+      key: menu.path || menu.menuCode,
+      icon: menu.icon ? () => h(iconMap[menu.icon] || HomeOutline) : undefined
+    }
+    
+    // 如果有子菜单，递归构建
+    if (menu.children && menu.children.length > 0) {
+      option.children = buildMenuOptions(menu.children)
+    }
+    
+    return option
+  })
+}
+
+// 加载用户菜单
+const loadMenus = async () => {
+  try {
+    // 如果 store 中已有菜单，直接使用
+    if (userStore.menus && userStore.menus.length > 0) {
+      menuOptions.value = buildMenuOptions(userStore.menus)
+      return
+    }
+    
+    // 否则从后端获取
+    const res = await getUserMenus()
+    if (res.data) {
+      userStore.setMenus(res.data)
+      menuOptions.value = buildMenuOptions(res.data)
+    }
+  } catch (error) {
+    console.error('加载菜单失败：', error)
+    message.error('加载菜单失败')
   }
-])
+}
+
+// 组件挂载时加载菜单
+onMounted(() => {
+  loadMenus()
+})
 
 // 用户下拉菜单
 const userOptions = [
