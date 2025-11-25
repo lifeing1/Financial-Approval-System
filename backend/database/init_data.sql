@@ -66,9 +66,10 @@ INSERT INTO sys_menu (id, parent_id, menu_name, menu_code, menu_type, path, comp
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, id FROM sys_menu;
 
--- 部门负责人和普通员工菜单（除流程管理外的所有菜单）
+-- 部门负责人菜单（除流程管理外的所有菜单）
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 2, id FROM sys_menu WHERE id NOT IN (4, 41);
 
+-- 普通员工菜单（除流程管理和数据统计外的基础菜单）
 INSERT INTO sys_role_menu (role_id, menu_id)
-SELECT 3, id FROM sys_menu WHERE id NOT IN (4, 41);
+SELECT 3, id FROM sys_menu WHERE id NOT IN (4, 41, 5, 51, 52, 53);

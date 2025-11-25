@@ -177,7 +177,7 @@ CREATE TABLE biz_approval_opinion (
 -- 12. 流程定义信息扩展表
 CREATE TABLE process_definition_info (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
-    process_key VARCHAR(100) NOT NULL UNIQUE COMMENT '流程定义KEY',
+    process_key VARCHAR(100) NOT NULL COMMENT '流程定义KEY',
     process_name VARCHAR(100) NOT NULL COMMENT '流程名称',
     category VARCHAR(50) COMMENT '流程分类',
     description VARCHAR(500) COMMENT '流程描述',
@@ -190,7 +190,7 @@ CREATE TABLE process_definition_info (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
-    INDEX idx_process_key (process_key),
+    UNIQUE INDEX uk_process_key_deleted (process_key, deleted) COMMENT '流程KEY唯一索引（支持逻辑删除）',
     INDEX idx_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程定义信息扩展表';
 

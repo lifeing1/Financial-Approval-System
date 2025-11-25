@@ -5,9 +5,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.approval.common.exception.BusinessException;
 import com.approval.dto.LoginDTO;
 import com.approval.entity.SysDept;
+import com.approval.entity.SysMenu;
 import com.approval.entity.SysRole;
 import com.approval.entity.SysUser;
 import com.approval.mapper.SysDeptMapper;
+import com.approval.mapper.SysMenuMapper;
 import com.approval.mapper.SysRoleMapper;
 import com.approval.mapper.SysUserMapper;
 import com.approval.service.AuthService;
@@ -33,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserMapper userMapper;
     private final SysDeptMapper deptMapper;
     private final SysRoleMapper roleMapper;
+    private final SysMenuMapper menuMapper;
     
     @Override
     public Map<String, Object> login(LoginDTO loginDTO) {
@@ -99,16 +102,63 @@ public class AuthServiceImpl implements AuthService {
                 .collect(Collectors.toList());
         userInfo.setRoles(roleNames);
         
-        // TODO: 查询用户权限
-        userInfo.setPermissions(new ArrayList<>());
+        // 查询用户权限
+        List<String> permissions = menuMapper.selectPermissionsByUserId(userId);
+        userInfo.setPermissions(permissions);
         
         return userInfo;
     }
     
     @Override
     public List<MenuVO> getUserMenus() {
-        // TODO: 根据用户角色查询菜单
-        return new ArrayList<>();
+        // 获取当前登录用户ID
+        Long userId = StpUtil.getLoginIdAsLong();
+        
+        // 查询用户菜单
+        List<SysMenu> menus = menuMapper.selectMenusByUserId(userId);
+        
+        // 转换为VO并构建树形结构
+        return buildMenuTree(menus, 0L);
+    }
+    
+    /**
+     * 构建菜单树
+     */
+    private List<MenuVO> buildMenuTree(List<SysMenu> menus, Long parentId) {
+        List<MenuVO> menuTree = new ArrayList<>();
+        
+        for (SysMenu menu : menus) {
+            if (parentId.equals(menu.getParentId())) {
+                MenuVO menuVO = convertToMenuVO(menu);
+                
+                // 递归查找子菜单
+                List<MenuVO> children = buildMenuTree(menus, menu.getId());
+                if (!children.isEmpty()) {
+                    menuVO.setChildren(children);
+                }
+                
+                menuTree.add(menuVO);
+            }
+        }
+        
+        return menuTree;
+    }
+    
+    /**
+     * 转换为 MenuVO
+     */
+    private MenuVO convertToMenuVO(SysMenu menu) {
+        MenuVO menuVO = new MenuVO();
+        menuVO.setId(menu.getId());
+        menuVO.setParentId(menu.getParentId());
+        menuVO.setMenuName(menu.getMenuName());
+        menuVO.setMenuCode(menu.getMenuCode());
+        menuVO.setMenuType(menu.getMenuType());
+        menuVO.setPath(menu.getPath());
+        menuVO.setComponent(menu.getComponent());
+        menuVO.setIcon(menu.getIcon());
+        menuVO.setSortOrder(menu.getSortOrder());
+        return menuVO;
     }
     
     @Override

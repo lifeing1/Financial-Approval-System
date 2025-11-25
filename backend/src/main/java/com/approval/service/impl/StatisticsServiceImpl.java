@@ -1,12 +1,15 @@
 package com.approval.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.approval.entity.BusinessTrip;
 import com.approval.entity.PettyCash;
 import com.approval.entity.SysDept;
+import com.approval.entity.SysRole;
 import com.approval.entity.SysUser;
 import com.approval.mapper.BusinessTripMapper;
 import com.approval.mapper.PettyCashMapper;
 import com.approval.mapper.SysDeptMapper;
+import com.approval.mapper.SysRoleMapper;
 import com.approval.mapper.SysUserMapper;
 import com.approval.service.StatisticsService;
 import com.approval.vo.CashStatisticsVO;
@@ -33,15 +36,28 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final PettyCashMapper pettyCashMapper;
     private final SysDeptMapper sysDeptMapper;
     private final SysUserMapper sysUserMapper;
+    private final SysRoleMapper sysRoleMapper;
     
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
     
     @Override
     public TripStatisticsVO getTripStatistics(String startDate, String endDate) {
+        // 获取当前登录用户
+        Long userId = StpUtil.getLoginIdAsLong();
+        SysUser currentUser = sysUserMapper.selectById(userId);
+        
+        // 判断用户角色
+        boolean isDeptLeader = isDeptLeader(userId);
+        
         // 构建查询条件
         LambdaQueryWrapper<BusinessTrip> wrapper = new LambdaQueryWrapper<>();
         // 统计已提交的申请（审批中、已通过、已驳回），排除草稿
         wrapper.in(BusinessTrip::getStatus, 1, 2, 3);
+        
+        // 部门负责人只能看自己部门的数据
+        if (isDeptLeader && currentUser.getDeptId() != null) {
+            wrapper.eq(BusinessTrip::getDeptId, currentUser.getDeptId());
+        }
         
         if (StringUtils.hasText(startDate)) {
             wrapper.ge(BusinessTrip::getApplyDate, LocalDate.parse(startDate));
@@ -166,8 +182,22 @@ public class StatisticsServiceImpl implements StatisticsService {
     
     @Override
     public CashStatisticsVO getCashStatistics(String startDate, String endDate) {
+        // 获取当前登录用户
+        Long userId = StpUtil.getLoginIdAsLong();
+        SysUser currentUser = sysUserMapper.selectById(userId);
+        
+        // 判断用户角色
+        boolean isDeptLeader = isDeptLeader(userId);
+        
         // 构建查询条件
         LambdaQueryWrapper<PettyCash> wrapper = new LambdaQueryWrapper<>();
+        // 统计已提交的申请（审批中、已通过、已驳回），排除草稿
+        wrapper.in(PettyCash::getStatus, 1, 2, 3);
+        
+        // 部门负责人只能看自己部门的数据
+        if (isDeptLeader && currentUser.getDeptId() != null) {
+            wrapper.eq(PettyCash::getDeptId, currentUser.getDeptId());
+        }
         
         if (StringUtils.hasText(startDate)) {
             wrapper.ge(PettyCash::getApplyDate, LocalDate.parse(startDate));
@@ -277,5 +307,14 @@ public class StatisticsServiceImpl implements StatisticsService {
         result.sort(Comparator.comparing(CashStatisticsVO.MonthStatItem::getMonth));
         
         return result;
+    }
+    
+    /**
+     * 判断用户是否为部门负责人
+     */
+    private boolean isDeptLeader(Long userId) {
+        List<SysRole> roles = sysRoleMapper.selectRolesByUserId(userId);
+        return roles.stream()
+                .anyMatch(role -> "DEPT_LEADER".equals(role.getRoleCode()));
     }
 }
