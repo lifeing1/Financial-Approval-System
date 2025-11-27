@@ -14,6 +14,12 @@
             </extensionElements>
         </userTask>
         <exclusiveGateway gatewayDirection="Unspecified" id="financeGateway" name="财务审批结果"/>
+        <userTask activiti:exclusive="true" flowable:assignee="${generalManager}" id="generalManagerApproval" name="总经理审批">
+            <extensionElements>
+                <flowable:taskListener class="com.approval.listener.GeneralManagerTaskListener" event="create"/>
+            </extensionElements>
+        </userTask>
+        <exclusiveGateway gatewayDirection="Unspecified" id="generalManagerGateway" name="总经理审批结果"/>
         <endEvent id="approvedEnd" name="审批通过"/>
         <endEvent id="rejectedEnd" name="审批驳回"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="deptManagerApproval"/>
@@ -25,23 +31,33 @@
             <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == false}]]></conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="flow5" sourceRef="financeApproval" targetRef="financeGateway"/>
-        <sequenceFlow id="flow6" sourceRef="financeGateway" targetRef="approvedEnd">
-            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true}]]></conditionExpression>
+        <sequenceFlow id="flow6" sourceRef="financeGateway" targetRef="generalManagerApproval">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount > 3000}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow6_1" sourceRef="financeGateway" targetRef="approvedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount <= 3000}]]></conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="flow7" sourceRef="financeGateway" targetRef="rejectedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == false}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow8" sourceRef="generalManagerApproval" targetRef="generalManagerGateway"/>
+        <sequenceFlow id="flow9" sourceRef="generalManagerGateway" targetRef="approvedEnd">
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true}]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow10" sourceRef="generalManagerGateway" targetRef="rejectedEnd">
             <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == false}]]></conditionExpression>
         </sequenceFlow>
     </process>
     <bpmndi:BPMNDiagram documentation="background=#FFFFFF;count=1;horizontalcount=1;orientation=0;width=842.4;height=1195.2;imageableWidth=832.4;imageableHeight=1185.2;imageableX=5.0;imageableY=5.0" id="Diagram-_1" name="New Diagram">
         <bpmndi:BPMNPlane bpmnElement="pettyCashProcess">
             <bpmndi:BPMNShape bpmnElement="rejectedEnd" id="Shape-rejectedEnd">
-                <dc:Bounds height="32.0" width="32.0" x="643.0" y="236.0"/>
+                <dc:Bounds height="32.0" width="32.0" x="880.0" y="236.0"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="32.0" width="32.0" x="0.0" y="0.0"/>
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
             <bpmndi:BPMNShape bpmnElement="approvedEnd" id="Shape-approvedEnd">
-                <dc:Bounds height="32.0" width="32.0" x="643.0" y="164.0"/>
+                <dc:Bounds height="32.0" width="32.0" x="880.0" y="164.0"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="32.0" width="32.0" x="0.0" y="0.0"/>
                 </bpmndi:BPMNLabel>
@@ -56,6 +72,18 @@
                 <dc:Bounds height="55.0" width="85.0" x="406.0" y="188.5"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="55.0" width="85.0" x="0.0" y="0.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="generalManagerApproval" id="Shape-generalManagerApproval">
+                <dc:Bounds height="55.0" width="85.0" x="643.0" y="188.5"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="55.0" width="85.0" x="0.0" y="0.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="generalManagerGateway" id="Shape-generalManagerGateway" isMarkerVisible="false">
+                <dc:Bounds height="32.0" width="32.0" x="788.0" y="200.0"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="32.0" width="32.0" x="0.0" y="0.0"/>
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
             <bpmndi:BPMNShape bpmnElement="deptGateway" id="Shape-deptGateway" isMarkerVisible="false">
@@ -76,6 +104,14 @@
                     <dc:Bounds height="32.0" width="32.0" x="0.0" y="0.0"/>
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge bpmnElement="flow6_1" id="BPMNEdge_flow6_1" sourceElement="financeGateway" targetElement="approvedEnd">
+                <di:waypoint x="567.0" y="200.0"/>
+                <di:waypoint x="567.0" y="180.0"/>
+                <di:waypoint x="880.0" y="180.0"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
             <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1" sourceElement="startEvent" targetElement="deptManagerApproval">
                 <di:waypoint x="109.0" y="216.0"/>
                 <di:waypoint x="169.0" y="216.0"/>
@@ -99,7 +135,7 @@
             </bpmndi:BPMNEdge>
             <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4" sourceElement="deptGateway" targetElement="rejectedEnd">
                 <di:waypoint x="346.0" y="216.0"/>
-                <di:waypoint x="643.0" y="252.0"/>
+                <di:waypoint x="880.0" y="252.0"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
                 </bpmndi:BPMNLabel>
@@ -111,16 +147,41 @@
                     <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
-            <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6" sourceElement="financeGateway" targetElement="approvedEnd">
+            <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6" sourceElement="financeGateway" targetElement="generalManagerApproval">
                 <di:waypoint x="583.0" y="216.0"/>
-                <di:waypoint x="643.0" y="180.0"/>
+                <di:waypoint x="643.0" y="216.0"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
             <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7" sourceElement="financeGateway" targetElement="rejectedEnd">
-                <di:waypoint x="583.0" y="216.0"/>
-                <di:waypoint x="643.0" y="252.0"/>
+                <di:waypoint x="567.0" y="232.0"/>
+                <di:waypoint x="567.0" y="252.0"/>
+                <di:waypoint x="880.0" y="252.0"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10" sourceElement="generalManagerGateway" targetElement="rejectedEnd">
+                <di:waypoint x="804.0" y="232.0"/>
+                <di:waypoint x="804.0" y="252.0"/>
+                <di:waypoint x="880.0" y="252.0"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8" sourceElement="generalManagerApproval" targetElement="generalManagerGateway">
+                <di:waypoint x="728.0" y="216.0"/>
+                <di:waypoint x="788.0" y="216.0"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9" sourceElement="generalManagerGateway" targetElement="approvedEnd">
+                <di:waypoint x="820.0" y="216.0"/>
+                <di:waypoint x="850.0" y="216.0"/>
+                <di:waypoint x="850.0" y="180.0"/>
+                <di:waypoint x="880.0" y="180.0"/>
                 <bpmndi:BPMNLabel>
                     <dc:Bounds height="-1.0" width="-1.0" x="-1.0" y="-1.0"/>
                 </bpmndi:BPMNLabel>
