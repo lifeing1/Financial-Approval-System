@@ -375,8 +375,7 @@ const onCreateExpense = () => ({
   expenseType: '',
   amount: 0,
   remark: '',
-  attachments: [],  // 存储文件对象 { name, size, file }
-  uploadedUrls: []  // 存储已上传到OSS的URL
+  attachments: []  // 存储文件对象 { name, size, file }
 })
 
 const totalAmount = computed(() => {
@@ -494,7 +493,8 @@ const closePreview = () => {
   previewType.value = ''
 }
 
-// 上传所有文件到OSS
+// 上传所有文件到OSS（已废弃，不再使用）
+/*
 const uploadAllFilesToOss = async () => {
   const uploadPromises = []
   
@@ -530,6 +530,7 @@ const uploadAllFilesToOss = async () => {
     formData.expenses[index].uploadedUrls = fileInfos
   })
 }
+*/
 
 // 处理开始日期变化
 const handleStartDateChange = (value) => {
@@ -555,20 +556,30 @@ const handleEndDateChange = (value) => {
   }
 }
 
+// 格式化日期为 yyyy-MM-dd
+const formatDate = (timestamp) => {
+  if (!timestamp) return null
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const handleSaveDraft = async () => {
   try {
     const data = {
       id: draftId.value,
       ...formData,
       transportModes: formData.transportModes.join(','),
-      startDate: formData.startDate ? new Date(formData.startDate).toISOString().split('T')[0] : null,
-      endDate: formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : null,
+      startDate: formatDate(formData.startDate),
+      endDate: formatDate(formData.endDate),
       expenses: formData.expenses.map(expense => ({
         expenseType: expense.expenseType,
         amount: expense.amount,
         remark: expense.remark,
-        // 使用uploadedUrls（已上传到OSS的URL），如果没有则为空数组
-        attachments: expense.uploadedUrls || []
+        // 不上传附件到OSS，attachments保持为空数组
+        attachments: []
       }))
     }
     
@@ -577,7 +588,8 @@ const handleSaveDraft = async () => {
     message.success('保存成功')
   } catch (error) {
     console.error('保存失败：', error)
-    message.error('保存失败，请稍后重试')
+    message.error('保存失败：' + (error.message || '请稍后重试'))
+    throw error; // 抛出错误以便上层捕获
   }
 }
 
@@ -594,34 +606,62 @@ const handleSubmit = async () => {
         try {
           // 显示加载中
           const hasFiles = formData.expenses.some(exp => exp.attachments && exp.attachments.length > 0)
-          const loadingMsg = message.loading(hasFiles ? '正在上传附件并提交...' : '正在提交...', { duration: 0 })
+          const loadingMsg = message.loading(hasFiles ? '正在上传文件并提交...' : '正在提交...', { duration: 0 })
           
           try {
-            // 1. 先上传所有文件到OSS
-            if (hasFiles) {
-              await uploadAllFilesToOss()
+            // 准备提交数据，需要先上传附件
+            const submitData = {
+              reason: formData.reason,
+              startPlace: formData.startPlace,
+              destination: formData.destination,
+              startDate: formatDate(formData.startDate),
+              endDate: formatDate(formData.endDate),
+              transportModes: formData.transportModes.join(','),
+              remark: formData.remark,
+              expenses: []
             }
             
-            // 2. 保存草稿（此时包含OSS URL）
-            await handleSaveDraft()
-            
-            // 3. 提交审批
-            if (draftId.value) {
-              await submitApply(draftId.value)
-              loadingMsg.destroy()
-              message.success('提交成功')
-              router.push('/business-trip/my')
-            } else {
-              loadingMsg.destroy()
-              message.error('保存失败，请重试')
+            // 处理费用明细和附件
+            for (const expense of formData.expenses) {
+              const expenseData = {
+                expenseType: expense.expenseType,
+                amount: expense.amount,
+                remark: expense.remark,
+                attachments: []
+              }
+              
+              // 上传附件
+              if (expense.attachments && expense.attachments.length > 0) {
+                for (const attachment of expense.attachments) {
+                  try {
+                    const ossResult = await uploadToOss(attachment.file)
+                    expenseData.attachments.push({
+                      fileName: attachment.name,
+                      url: ossResult.data
+                    })
+                  } catch (uploadError) {
+                    loadingMsg.destroy()
+                    message.error(`文件 ${attachment.name} 上传失败`)
+                    throw uploadError
+                  }
+                }
+              }
+              
+              submitData.expenses.push(expenseData)
             }
+            
+            // 提交审批
+            await submitApply(submitData)
+            loadingMsg.destroy()
+            message.success('提交成功')
+            router.push('/business-trip/my')
           } catch (error) {
             loadingMsg.destroy()
             throw error
           }
         } catch (error) {
           console.error('提交失败：', error)
-          message.error('提交失败，请稍后重试')
+          message.error('提交失败：' + (error.message || '请稍后重试'))
         }
       }
     })

@@ -1,5 +1,6 @@
 package com.approval.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -25,9 +26,11 @@ public class BusinessTripDTO {
     private String destination;
     
     @NotNull(message = "开始日期不能为空")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
     
     @NotNull(message = "结束日期不能为空")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate endDate;
     
     private String transportModes;

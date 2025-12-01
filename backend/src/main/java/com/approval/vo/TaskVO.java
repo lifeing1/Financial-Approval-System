@@ -1,6 +1,8 @@
 package com.approval.vo;
 
 import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -8,6 +10,11 @@ import java.time.LocalDateTime;
  */
 @Data
 public class TaskVO {
+    
+    /**
+     * 业务ID（出差申请ID或备用金申请ID）
+     */
+    private Long id;
     
     /**
      * 任务ID
@@ -60,6 +67,11 @@ public class TaskVO {
     private String applicantName;
     
     /**
+     * 申请人姓名（别名，与applicantName相同）
+     */
+    private String userName;
+    
+    /**
      * 部门名称
      */
     private String deptName;
@@ -68,6 +80,26 @@ public class TaskVO {
      * 申请事由
      */
     private String reason;
+    
+    /**
+     * 目的地（出差申请）
+     */
+    private String destination;
+    
+    /**
+     * 开始日期（出差申请）
+     */
+    private LocalDate startDate;
+    
+    /**
+     * 结束日期（出差申请）
+     */
+    private LocalDate endDate;
+    
+    /**
+     * 预计费用/申请金额
+     */
+    private BigDecimal totalAmount;
     
     /**
      * 任务创建时间

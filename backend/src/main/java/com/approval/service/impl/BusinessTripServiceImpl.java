@@ -137,29 +137,85 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitApply(Long id) {
-        BusinessTrip trip = businessTripMapper.selectById(id);
-        if (trip == null) {
-            throw new BusinessException("申请不存在");
-        }
-        
+    public void submitApply(BusinessTripDTO dto) {
         Long userId = StpUtil.getLoginIdAsLong();
-        if (!trip.getUserId().equals(userId)) {
-            throw new BusinessException("无权操作");
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
         }
         
-        if (trip.getStatus() != 0) {
-            throw new BusinessException("只有草稿状态才能提交");
+        // 如果传入了ID，检查权限
+        if (dto.getId() != null) {
+            BusinessTrip existingTrip = businessTripMapper.selectById(dto.getId());
+            if (existingTrip != null && !existingTrip.getUserId().equals(userId)) {
+                throw new BusinessException("无权操作");
+            }
         }
         
-        // 启动工作流
+        // 创建出差申请对象
+        BusinessTrip trip = new BusinessTrip();
+        trip.setUserId(userId);
+        trip.setDeptId(user.getDeptId());
+        trip.setApplyDate(LocalDate.now());
+        trip.setReason(dto.getReason());
+        trip.setStartPlace(dto.getStartPlace());
+        trip.setDestination(dto.getDestination());
+        trip.setStartDate(dto.getStartDate());
+        trip.setEndDate(dto.getEndDate());
+        trip.setTransportModes(dto.getTransportModes());
+        trip.setRemark(dto.getRemark());
+        trip.setStatus(1); // 审批中
+        
+        // 计算总金额
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        if (dto.getExpenses() != null && !dto.getExpenses().isEmpty()) {
+            for (TripExpenseDTO expense : dto.getExpenses()) {
+                totalAmount = totalAmount.add(expense.getAmount());
+            }
+        }
+        trip.setTotalAmount(totalAmount);
+        
+        // 生成申请编号
+        trip.setApplyNo("BT" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + System.currentTimeMillis() % 10000);
+        trip.setCreateTime(LocalDateTime.now());
+        trip.setUpdateTime(LocalDateTime.now());
+        
+        // 保存出差申请
+        businessTripMapper.insert(trip);
+        
+        // 保存费用明细和附件
+        if (dto.getExpenses() != null && !dto.getExpenses().isEmpty()) {
+            for (TripExpenseDTO expenseDTO : dto.getExpenses()) {
+                // 保存费用明细
+                TripExpense expense = new TripExpense();
+                expense.setTripId(trip.getId());
+                expense.setExpenseType(expenseDTO.getExpenseType());
+                expense.setAmount(expenseDTO.getAmount());
+                expense.setRemark(expenseDTO.getRemark());
+                tripExpenseMapper.insert(expense);
+                
+                // 保存费用明细的附件
+                if (!CollectionUtils.isEmpty(expenseDTO.getAttachments())) {
+                    for (AttachmentDTO attachmentDTO : expenseDTO.getAttachments()) {
+                        Attachment attachment = new Attachment();
+                        attachment.setBusinessId(expense.getId());
+                        attachment.setBusinessType("trip_expense");
+                        attachment.setFilePath(attachmentDTO.getUrl());
+                        attachment.setFileName(attachmentDTO.getFileName());
+                        attachment.setUploadUserId(userId);
+                        attachmentMapper.insert(attachment);
+                    }
+                }
+            }
+        }
+        
+        // 启动工作流（如果失败，事务会自动回滚，不会保存数据）
         try {
-            String processKey = "businessTrip"; // 出差申请流程定义KEY
-            String businessKey = id.toString();
-            String processInstanceId = workflowService.startProcess(processKey, businessKey, userId);
+            String processKey = "businessTripProcess"; // 出差申请流程定义KEY
+            String businessKey = trip.getId().toString();
+            String processInstanceId = workflowService.startProcess(processKey, businessKey, userId, trip.getDeptId());
             
-            // 更新申请状态和流程实例ID
-            trip.setStatus(1); // 审批中
+            // 更新流程实例ID
             trip.setProcessInstanceId(processInstanceId);
             businessTripMapper.updateById(trip);
         } catch (Exception e) {

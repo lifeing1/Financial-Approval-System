@@ -157,8 +157,9 @@ public class WorkflowController {
     @PostMapping("/start")
     public Result<?> startProcess(@RequestParam String processKey,
                                   @RequestParam String businessKey,
-                                  @RequestParam Long userId) {
-        String processInstanceId = workflowService.startProcess(processKey, businessKey, userId);
+                                  @RequestParam Long userId,
+                                  @RequestParam(required = false) Long deptId) {
+        String processInstanceId = workflowService.startProcess(processKey, businessKey, userId, deptId);
         return Result.success(processInstanceId);
     }
     
