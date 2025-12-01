@@ -569,7 +569,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
     
     @Override
-    public String startProcess(String processKey, String businessKey, Long userId) {
+    public String startProcess(String processKey, String businessKey, Long userId, Long deptId) {
         try {
             // 1. 获取流程定义
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
@@ -590,7 +590,50 @@ public class WorkflowServiceImpl implements WorkflowService {
             variables.put("userId", userId);
             variables.put("businessKey", businessKey);
             
-            // 3. 启动流程实例
+            // 3. 查询部门负责人，设置 deptManager 变量
+            if (deptId != null) {
+                SysDept dept = sysDeptMapper.selectById(deptId);
+                if (dept != null && dept.getLeaderId() != null) {
+                    variables.put("deptManager", dept.getLeaderId().toString());
+                    log.info("设置部门经理：{}", dept.getLeaderId());
+                } else {
+                    log.warn("部门ID：{} 没有设置负责人", deptId);
+                    throw new RuntimeException("该部门没有设置负责人，无法启动审批流程");
+                }
+            }
+            
+            // 4. 设置其他审批人（根据角色查找）
+            // 查找人事经理
+            SysUser hrManager = sysUserMapper.selectUserByRoleCode("HR_MANAGER");
+            if (hrManager != null) {
+                variables.put("hrManager", hrManager.getId().toString());
+                log.info("设置人事经理：{}（{}）", hrManager.getId(), hrManager.getRealName());
+            } else {
+                log.warn("未找到人事经理角色，使用默认管理员");
+                variables.put("hrManager", "1");
+            }
+            
+            // 查找财务经理
+            SysUser financeManager = sysUserMapper.selectUserByRoleCode("FINANCE_MANAGER");
+            if (financeManager != null) {
+                variables.put("financeManager", financeManager.getId().toString());
+                log.info("设置财务经理：{}（{}）", financeManager.getId(), financeManager.getRealName());
+            } else {
+                log.warn("未找到财务经理角色，使用默认管理员");
+                variables.put("financeManager", "1");
+            }
+            
+            // 查找总经理
+            SysUser generalManager = sysUserMapper.selectUserByRoleCode("GENERAL_MANAGER");
+            if (generalManager != null) {
+                variables.put("generalManager", generalManager.getId().toString());
+                log.info("设置总经理：{}（{}）", generalManager.getId(), generalManager.getRealName());
+            } else {
+                log.warn("未找到总经理角色，使用默认管理员");
+                variables.put("generalManager", "1");
+            }
+            
+            // 5. 启动流程实例
             org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
                     .startProcessInstanceByKey(processKey, businessKey, variables);
             
@@ -655,8 +698,40 @@ public class WorkflowServiceImpl implements WorkflowService {
             variables.put("comment", comment);
             variables.put("approverId", currentUserId);
             
+            // 设置审批人变量（确保后续节点可以使用）
+            // 查找人事经理
+            SysUser hrManager = sysUserMapper.selectUserByRoleCode("HR_MANAGER");
+            if (hrManager != null) {
+                variables.put("hrManager", hrManager.getId().toString());
+            } else {
+                variables.put("hrManager", "1");
+            }
+            
+            // 查找财务经理
+            SysUser financeManager = sysUserMapper.selectUserByRoleCode("FINANCE_MANAGER");
+            if (financeManager != null) {
+                variables.put("financeManager", financeManager.getId().toString());
+            } else {
+                variables.put("financeManager", "1");
+            }
+            
+            // 查找总经理
+            SysUser generalManager = sysUserMapper.selectUserByRoleCode("GENERAL_MANAGER");
+            if (generalManager != null) {
+                variables.put("generalManager", generalManager.getId().toString());
+            } else {
+                variables.put("generalManager", "1");
+            }
+            
             // 6. 完成任务
             taskService.complete(taskId, variables);
+            
+            // 打印流程变量用于调试
+            log.info("任务完成后的流程变量：approved={}, hrManager={}, financeManager={}, generalManager={}",
+                    variables.get("approved"),
+                    variables.get("hrManager"),
+                    variables.get("financeManager"),
+                    variables.get("generalManager"));
             
             // 7. 检查流程是否结束，更新业务状态
             org.flowable.engine.runtime.ProcessInstance updatedInstance = runtimeService
@@ -785,6 +860,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     private void fillBusinessInfo(TaskVO vo, String businessKey, String processKey) {
         try {
             Long businessId = Long.parseLong(businessKey);
+            vo.setId(businessId); // 设置业务ID
             
             if (processKey.contains("businessTrip") || processKey.contains("trip")) {
                 vo.setBusinessType("business_trip");
@@ -793,11 +869,18 @@ public class WorkflowServiceImpl implements WorkflowService {
                     vo.setApplyNo(trip.getApplyNo());
                     vo.setReason(trip.getReason());
                     vo.setApplicantId(trip.getUserId());
+                    vo.setDestination(trip.getDestination());
+                    vo.setStartDate(trip.getStartDate());
+                    vo.setEndDate(trip.getEndDate());
+                    vo.setTotalAmount(trip.getTotalAmount());
+                    // 使用业务数据的创建时间，而不是任务创建时间
+                    vo.setCreateTime(trip.getCreateTime());
                     
                     // 获取申请人信息
                     SysUser user = sysUserMapper.selectById(trip.getUserId());
                     if (user != null) {
                         vo.setApplicantName(user.getRealName());
+                        vo.setUserName(user.getRealName()); // 设置别名
                     }
                     
                     // 获取部门信息
@@ -815,11 +898,15 @@ public class WorkflowServiceImpl implements WorkflowService {
                     vo.setApplyNo(cash.getApplyNo());
                     vo.setReason(cash.getReason());
                     vo.setApplicantId(cash.getUserId());
+                    vo.setTotalAmount(cash.getAmount());
+                    // 使用业务数据的创建时间，而不是任务创建时间
+                    vo.setCreateTime(cash.getCreateTime());
                     
                     // 获取申请人信息
                     SysUser user = sysUserMapper.selectById(cash.getUserId());
                     if (user != null) {
                         vo.setApplicantName(user.getRealName());
+                        vo.setUserName(user.getRealName()); // 设置别名
                     }
                     
                     // 获取部门信息

@@ -35,9 +35,9 @@ public class BusinessTripController {
      * 提交申请
      */
     @Operation(summary = "提交申请")
-    @PostMapping("/submit/{id}")
-    public Result<?> submit(@PathVariable Long id) {
-        businessTripService.submitApply(id);
+    @PostMapping("/submit")
+    public Result<?> submit(@Valid @RequestBody BusinessTripDTO dto) {
+        businessTripService.submitApply(dto);
         return Result.success("提交成功");
     }
     

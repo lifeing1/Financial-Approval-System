@@ -76,7 +76,7 @@ public interface WorkflowService {
     /**
      * 启动流程实例
      */
-    String startProcess(String processKey, String businessKey, Long userId);
+    String startProcess(String processKey, String businessKey, Long userId, Long deptId);
     
     /**
      * 完成任务

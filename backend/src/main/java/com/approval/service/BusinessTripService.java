@@ -20,7 +20,7 @@ public interface BusinessTripService {
     /**
      * 提交申请
      */
-    void submitApply(Long id);
+    void submitApply(BusinessTripDTO dto);
     
     /**
      * 查询我的申请列表

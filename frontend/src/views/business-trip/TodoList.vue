@@ -113,7 +113,7 @@
                   text
                   type="primary"
                   size="small"
-                  @click="openAttachment(att.filePath)"
+                  @click="previewAttachment(att)"
                 >
                   <template #icon>
                     <n-icon :component="AttachIcon" />
@@ -129,6 +129,47 @@
       <template #footer>
         <n-space justify="end">
           <n-button @click="showDetailModal = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+    
+    <!-- 附件预览弹窗 -->
+    <n-modal
+      v-model:show="showPreviewModal"
+      preset="card"
+      :title="previewFile.fileName"
+      style="width: 90%; max-width: 1200px;"
+      :bordered="false"
+    >
+      <div style="max-height: 70vh; overflow: auto;">
+        <!-- 图片预览 -->
+        <n-image
+          v-if="isImage(previewFile.fileName)"
+          :src="previewFile.filePath"
+          style="width: 100%;"
+        />
+        
+        <!-- PDF预览 -->
+        <iframe
+          v-else-if="isPdf(previewFile.fileName)"
+          :src="previewFile.filePath"
+          style="width: 100%; height: 70vh; border: none;"
+        />
+        
+        <!-- 其他文件类型提示下载 -->
+        <n-empty v-else description="此文件类型不支持预览">
+          <template #extra>
+            <n-button size="small" @click="downloadFile(previewFile.filePath)">
+              点击下载
+            </n-button>
+          </template>
+        </n-empty>
+      </div>
+      
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="downloadFile(previewFile.filePath)">下载</n-button>
+          <n-button @click="showPreviewModal = false">关闭</n-button>
         </n-space>
       </template>
     </n-modal>
@@ -152,6 +193,8 @@ import {
   NDivider,
   NSpin,
   NIcon,
+  NImage,
+  NEmpty,
   useMessage 
 } from 'naive-ui'
 import { AttachOutline as AttachIcon } from '@vicons/ionicons5'
@@ -167,6 +210,8 @@ const currentRow = ref(null)
 const showDetailModal = ref(false)
 const detailLoading = ref(false)
 const detailData = ref(null)
+const showPreviewModal = ref(false)
+const previewFile = ref({ fileName: '', filePath: '' })
 
 const pagination = ref({
   page: 1,
@@ -175,6 +220,13 @@ const pagination = ref({
   showSizePicker: true,
   pageSizes: [10, 20, 50]
 })
+
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return '-'
+  // 后端已经返回格式化的字符串，直接使用
+  return dateTime
+}
 
 const columns = [
   {
@@ -213,7 +265,8 @@ const columns = [
   {
     title: '申请时间',
     key: 'createTime',
-    width: 180
+    width: 180,
+    render: (row) => formatDateTime(row.createTime)
   },
   {
     title: '操作',
@@ -275,8 +328,37 @@ const handleView = async (id) => {
   }
 }
 
-const openAttachment = (url) => {
-  window.open(url, '_blank')
+// 判断是否为图片
+const isImage = (fileName) => {
+  if (!fileName) return false
+  const ext = fileName.toLowerCase().split('.').pop()
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)
+}
+
+// 判断是否为PDF
+const isPdf = (fileName) => {
+  if (!fileName) return false
+  return fileName.toLowerCase().endsWith('.pdf')
+}
+
+// 预览附件
+const previewAttachment = (attachment) => {
+  previewFile.value = {
+    fileName: attachment.fileName,
+    filePath: attachment.filePath
+  }
+  showPreviewModal.value = true
+}
+
+// 下载文件
+const downloadFile = (url) => {
+  const link = document.createElement('a')
+  link.href = url
+  link.download = ''
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const handleShowApproval = (row) => {
@@ -287,12 +369,13 @@ const handleShowApproval = (row) => {
 
 const handleApprove = async () => {
   try {
-    await approve(currentRow.value.id, approvalOpinion.value)
+    await approve(currentRow.value.taskId, approvalOpinion.value)
     message.success('审批成功')
     showApprovalModal.value = false
     loadData()
   } catch (error) {
     console.error('审批失败：', error)
+    message.error('审批失败')
   }
 }
 
@@ -303,12 +386,13 @@ const handleReject = async () => {
   }
   
   try {
-    await reject(currentRow.value.id, approvalOpinion.value)
+    await reject(currentRow.value.taskId, approvalOpinion.value)
     message.success('已驳回')
     showApprovalModal.value = false
     loadData()
   } catch (error) {
     console.error('驳回失败：', error)
+    message.error('驳回失败')
   }
 }
 

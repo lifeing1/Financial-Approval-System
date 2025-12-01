@@ -14,10 +14,11 @@ export function saveDraft(data) {
 }
 
 // 提交申请
-export function submitApply(id) {
+export function submitApply(data) {
   return request({
-    url: `/business-trip/submit/${id}`,
-    method: 'post'
+    url: '/business-trip/submit',
+    method: 'post',
+    data
   })
 }
 
