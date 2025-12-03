@@ -50,7 +50,7 @@
             {{ detailData.applyNo }}
           </n-descriptions-item>
           <n-descriptions-item label="申请人">
-            {{ detailData.userName }} ({{ detailData.deptName }})
+            {{ detailData.userName || '-' }} ({{ detailData.deptName || '-' }})
           </n-descriptions-item>
           <n-descriptions-item label="申请事由" :span="2">
             {{ detailData.reason }}
@@ -58,9 +58,9 @@
           <n-descriptions-item label="申请金额">
             <span style="color: #18a058; font-weight: 600;">¥{{ detailData.amount || 0 }}</span>
           </n-descriptions-item>
-          <n-descriptions-item label="使用期限">
-            {{ detailData.usePeriod || '-' }}
-          </n-descriptions-item>
+<!--          <n-descriptions-item label="使用期限">-->
+<!--            {{ detailData.usePeriod || '-' }}-->
+<!--          </n-descriptions-item>-->
           <n-descriptions-item v-if="detailData.remark" label="备注" :span="2">
             {{ detailData.remark }}
           </n-descriptions-item>
@@ -95,7 +95,7 @@ import {
   NSpin,
   useMessage 
 } from 'naive-ui'
-import { getTodoList, approve, reject, getDetail } from '@/api/pettyCash'
+import { getTodoList, approve, reject, getDetailWithUserInfo } from '@/api/pettyCash'
 
 const message = useMessage()
 
@@ -121,7 +121,7 @@ const columns = [
   { title: '申请人', key: 'userName', width: 100 },
   { title: '部门', key: 'deptName', width: 120 },
   { title: '申请事由', key: 'reason', ellipsis: { tooltip: true } },
-  { title: '申请金额', key: 'amount', width: 120, render: (row) => `¥${row.amount || 0}` },
+  { title: '申请金额', key: 'totalAmount', width: 120, render: (row) => `¥${row.totalAmount || 0}` },
   { title: '申请时间', key: 'createTime', width: 180 },
   {
     title: '操作',
@@ -160,7 +160,7 @@ const handleView = async (id) => {
   try {
     showDetailModal.value = true
     detailLoading.value = true
-    const res = await getDetail(id)
+    const res = await getDetailWithUserInfo(id)
     detailData.value = res.data
   } catch (error) {
     console.error('获取详情失败：', error)
@@ -179,7 +179,7 @@ const handleShowApproval = (row) => {
 
 const handleApprove = async () => {
   try {
-    await approve(currentRow.value.id, approvalOpinion.value)
+    await approve(currentRow.value.taskId, approvalOpinion.value)
     message.success('审批成功')
     showApprovalModal.value = false
     loadData()
@@ -194,7 +194,7 @@ const handleReject = async () => {
     return
   }
   try {
-    await reject(currentRow.value.id, approvalOpinion.value)
+    await reject(currentRow.value.taskId, approvalOpinion.value)
     message.success('已驳回')
     showApprovalModal.value = false
     loadData()

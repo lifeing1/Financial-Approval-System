@@ -2,8 +2,11 @@ package com.approval.service;
 
 import com.approval.dto.PettyCashDTO;
 import com.approval.entity.PettyCash;
+import com.approval.vo.PettyCashVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
+import java.util.List;
 
 /**
  * 备用金申请服务接口
@@ -21,19 +24,19 @@ public interface PettyCashService {
     void submitApply(Long id);
     
     /**
-     * 查询我的申请列表
+     * 获取我的申请列表
      */
     IPage<PettyCash> getMyApplyList(Page<PettyCash> page, Integer status);
     
     /**
-     * 查询待办列表
+     * 获取待办列表
      */
-    IPage<PettyCash> getTodoList(Page<PettyCash> page);
+    IPage<com.approval.vo.TaskVO> getTodoList(Page<PettyCash> page);
     
     /**
-     * 查询已办列表
+     * 获取已办列表
      */
-    IPage<PettyCash> getDoneList(Page<PettyCash> page);
+    IPage<com.approval.vo.TaskVO> getDoneList(Page<PettyCash> page);
     
     /**
      * 查询详情
@@ -41,12 +44,22 @@ public interface PettyCashService {
     PettyCash getDetail(Long id);
     
     /**
-     * 审批
+     * 查询详情（包含用户和部门信息）
      */
-    void approve(Long id, String opinion);
+    PettyCashVO getDetailWithUserInfo(Long id);
     
     /**
-     * 驳回
+     * 审批通过
      */
-    void reject(Long id, String opinion);
+    void approve(String taskId, String opinion);
+    
+    /**
+     * 审批驳回
+     */
+    void reject(String taskId, String opinion);
+    
+    /**
+     * 获取审批历史记录
+     */
+    List<com.approval.entity.ApprovalOpinion> getApprovalHistory(Long id);
 }

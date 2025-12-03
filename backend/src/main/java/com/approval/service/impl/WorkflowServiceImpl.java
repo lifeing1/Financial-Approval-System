@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -39,8 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -59,6 +58,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final RepositoryService repositoryService;
     private final RuntimeService runtimeService;
     private final TaskService taskService;
+    private final HistoryService historyService;
     private final ProcessDefinitionInfoMapper definitionInfoMapper;
     private final ProcessNodeMapper nodeMapper;
     private final ApprovalOpinionMapper opinionMapper;
@@ -569,76 +569,104 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String startProcess(String processKey, String businessKey, Long userId, Long deptId) {
         try {
-            // 1. 获取流程定义
-            ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
-                    .processDefinitionKey(processKey)
-                    .latestVersion()
-                    .singleResult();
+            log.info("开始启动流程，流程KEY：{}，业务KEY：{}，用户ID：{}，部门ID：{}", 
+                    processKey, businessKey, userId, deptId);
             
-            if (processDefinition == null) {
-                throw new RuntimeException("流程定义不存在：" + processKey);
+            // 1. 获取审批人信息
+            // 部门经理（从用户所在部门获取）
+            SysUser deptManager = null;
+            if (deptId != null) {
+                deptManager = sysUserMapper.selectManagerByDeptId(deptId);
             }
             
-            if (processDefinition.isSuspended()) {
-                throw new RuntimeException("流程已被暂停，无法启动");
+            if (deptManager != null) {
+                log.info("设置部门经理：{}（{}）", deptManager.getId(), deptManager.getRealName());
+            } else {
+                log.warn("未找到部门经理，使用默认管理员");
+            }
+            
+            // 财务经理
+            SysUser financeManager = sysUserMapper.selectUserByRoleCode("FINANCE_MANAGER");
+            if (financeManager != null) {
+                log.info("设置财务经理：{}（{}）", financeManager.getId(), financeManager.getRealName());
+            } else {
+                log.warn("未找到财务经理，使用默认管理员");
+            }
+            
+            // 总经理
+            SysUser generalManager = sysUserMapper.selectUserByRoleCode("GENERAL_MANAGER");
+            if (generalManager != null) {
+                log.info("设置总经理：{}（{}）", generalManager.getId(), generalManager.getRealName());
+            } else {
+                log.warn("未找到总经理角色，使用默认管理员");
             }
             
             // 2. 设置流程变量
             java.util.Map<String, Object> variables = new java.util.HashMap<>();
-            variables.put("userId", userId);
-            variables.put("businessKey", businessKey);
+            variables.put("initiator", userId.toString());
+            variables.put("deptId", deptId != null ? deptId.toString() : "");
             
-            // 3. 查询部门负责人，设置 deptManager 变量
-            if (deptId != null) {
-                SysDept dept = sysDeptMapper.selectById(deptId);
-                if (dept != null && dept.getLeaderId() != null) {
-                    variables.put("deptManager", dept.getLeaderId().toString());
-                    log.info("设置部门经理：{}", dept.getLeaderId());
-                } else {
-                    log.warn("部门ID：{} 没有设置负责人", deptId);
-                    throw new RuntimeException("该部门没有设置负责人，无法启动审批流程");
-                }
-            }
-            
-            // 4. 设置其他审批人（根据角色查找）
-            // 查找人事经理
-            SysUser hrManager = sysUserMapper.selectUserByRoleCode("HR_MANAGER");
-            if (hrManager != null) {
-                variables.put("hrManager", hrManager.getId().toString());
-                log.info("设置人事经理：{}（{}）", hrManager.getId(), hrManager.getRealName());
+            // 设置审批人变量
+            if (deptManager != null) {
+                variables.put("deptManager", deptManager.getId().toString());
             } else {
-                log.warn("未找到人事经理角色，使用默认管理员");
-                variables.put("hrManager", "1");
+                variables.put("deptManager", "1"); // 默认管理员
             }
             
-            // 查找财务经理
-            SysUser financeManager = sysUserMapper.selectUserByRoleCode("FINANCE_MANAGER");
             if (financeManager != null) {
                 variables.put("financeManager", financeManager.getId().toString());
-                log.info("设置财务经理：{}（{}）", financeManager.getId(), financeManager.getRealName());
             } else {
-                log.warn("未找到财务经理角色，使用默认管理员");
                 variables.put("financeManager", "1");
             }
             
-            // 查找总经理
-            SysUser generalManager = sysUserMapper.selectUserByRoleCode("GENERAL_MANAGER");
             if (generalManager != null) {
                 variables.put("generalManager", generalManager.getId().toString());
-                log.info("设置总经理：{}（{}）", generalManager.getId(), generalManager.getRealName());
             } else {
-                log.warn("未找到总经理角色，使用默认管理员");
                 variables.put("generalManager", "1");
             }
             
-            // 5. 启动流程实例
+            // 3. 根据流程类型设置业务变量
+            if (processKey.contains("pettyCash") || processKey.contains("cash")) {
+                // 备用金流程，需要设置 amount 变量
+                try {
+                    Long businessId = Long.parseLong(businessKey);
+                    PettyCash pettyCash = pettyCashMapper.selectById(businessId);
+                    if (pettyCash != null && pettyCash.getAmount() != null) {
+                        // 确保使用正确的数值类型进行比较
+                        variables.put("amount", pettyCash.getAmount().doubleValue());
+                        log.info("设置备用金金额：{}", pettyCash.getAmount());
+                    } else {
+                        log.warn("未找到备用金申请或金额为空");
+                        variables.put("amount", 0.0);
+                    }
+                } catch (Exception e) {
+                    log.error("获取备用金信息失败", e);
+                    variables.put("amount", 0.0);
+                }
+            } else if (processKey.contains("businessTrip") || processKey.contains("trip")) {
+                // 出差流程，可以设置相关变量（如果需要）
+                try {
+                    Long businessId = Long.parseLong(businessKey);
+                    BusinessTrip businessTrip = businessTripMapper.selectById(businessId);
+                    if (businessTrip != null && businessTrip.getTotalAmount() != null) {
+                        // 确保使用正确的数值类型进行比较
+                        variables.put("amount", businessTrip.getTotalAmount().doubleValue());
+                        log.info("设置出差总金额：{}", businessTrip.getTotalAmount());
+                    }
+                } catch (Exception e) {
+                    log.error("获取出差信息失败", e);
+                }
+            }
+            
+            // 4. 启动流程实例
             org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
                     .startProcessInstanceByKey(processKey, businessKey, variables);
             
-            log.info("流程实例启动成功，流程KEY：{}，实例ID：{}，业务KEY：{}", 
-                    processKey, processInstance.getId(), businessKey);
+            log.info("流程实例启动成功，流程KEY：{}，实例ID：{}，业务KEY：{}，流程变量：{}", 
+                    processKey, processInstance.getId(), businessKey, variables);
             
             return processInstance.getId();
             
@@ -665,13 +693,14 @@ public class WorkflowServiceImpl implements WorkflowService {
             Long currentUserId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
             SysUser currentUser = sysUserMapper.selectById(currentUserId);
             
-            // 3. 获取业务KEY
+            // 3. 获取业务KEY和流程实例
             org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
                     .createProcessInstanceQuery()
                     .processInstanceId(task.getProcessInstanceId())
                     .singleResult();
             
             String businessKey = processInstance.getBusinessKey();
+            String processKey = task.getProcessDefinitionId().split(":")[0];
             
             // 4. 保存审批意见
             ApprovalOpinion opinion = new ApprovalOpinion();
@@ -683,7 +712,6 @@ public class WorkflowServiceImpl implements WorkflowService {
             opinion.setAction(approved ? "APPROVE" : "REJECT");
             
             // 根据流程定义KEY判断业务类型
-            String processKey = task.getProcessDefinitionId().split(":")[0];
             if (processKey.contains("businessTrip") || processKey.contains("trip")) {
                 opinion.setBusinessType("business_trip");
             } else if (processKey.contains("pettyCash") || processKey.contains("cash")) {
@@ -723,12 +751,46 @@ public class WorkflowServiceImpl implements WorkflowService {
                 variables.put("generalManager", "1");
             }
             
+            // 设置业务变量（amount）- 在处理任何任务时都设置，确保变量在整个流程中可用
+            if (processKey.contains("pettyCash") || processKey.contains("cash")) {
+                // 备用金流程，需要设置 amount 变量
+                try {
+                    Long businessId = Long.parseLong(businessKey);
+                    PettyCash pettyCash = pettyCashMapper.selectById(businessId);
+                    if (pettyCash != null && pettyCash.getAmount() != null) {
+                        // 确保使用正确的数值类型进行比较
+                        variables.put("amount", pettyCash.getAmount().doubleValue());
+                        log.info("设置备用金金额：{}", pettyCash.getAmount());
+                    } else {
+                        log.warn("未找到备用金申请或金额为空");
+                        variables.put("amount", 0.0);
+                    }
+                } catch (Exception e) {
+                    log.error("获取备用金信息失败", e);
+                    variables.put("amount", 0.0);
+                }
+            } else if (processKey.contains("businessTrip") || processKey.contains("trip")) {
+                // 出差流程，设置 amount 变量
+                try {
+                    Long businessId = Long.parseLong(businessKey);
+                    BusinessTrip businessTrip = businessTripMapper.selectById(businessId);
+                    if (businessTrip != null && businessTrip.getTotalAmount() != null) {
+                        // 确保使用正确的数值类型进行比较
+                        variables.put("amount", businessTrip.getTotalAmount().doubleValue());
+                        log.info("设置出差总金额：{}", businessTrip.getTotalAmount());
+                    }
+                } catch (Exception e) {
+                    log.error("获取出差信息失败", e);
+                }
+            }
+            
             // 6. 完成任务
             taskService.complete(taskId, variables);
             
             // 打印流程变量用于调试
-            log.info("任务完成后的流程变量：approved={}, hrManager={}, financeManager={}, generalManager={}",
+            log.info("任务完成后的流程变量：approved={}, amount={}, hrManager={}, financeManager={}, generalManager={}",
                     variables.get("approved"),
+                    variables.get("amount"),
                     variables.get("hrManager"),
                     variables.get("financeManager"),
                     variables.get("generalManager"));
@@ -821,6 +883,115 @@ public class WorkflowServiceImpl implements WorkflowService {
         } catch (Exception e) {
             log.error("查询用户待办任务失败", e);
             throw new RuntimeException("查询待办任务失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    public Page<TaskVO> getUserHistoryTasks(Long userId, Integer current, Integer size) {
+        try {
+            Page<TaskVO> resultPage = new Page<>(current, size);
+            
+            // 1. 查询用户已办任务历史
+            Object historyTaskQuery = historyService.createHistoricTaskInstanceQuery()
+                    .taskAssignee(userId.toString())
+                    .finished()
+                    .orderByHistoricTaskInstanceEndTime()
+                    .desc();
+            
+            // 分页查询
+            long total = (Long) historyTaskQuery.getClass().getMethod("count").invoke(historyTaskQuery);
+            int firstResult = (current - 1) * size;
+            
+            @SuppressWarnings("unchecked")
+            List<Object> historyTasks = (List<Object>) historyTaskQuery.getClass()
+                    .getMethod("listPage", int.class, int.class)
+                    .invoke(historyTaskQuery, firstResult, size);
+            
+            // 2. 转换为VO
+            List<TaskVO> taskVOList = new ArrayList<>();
+            
+            for (Object historyTask : historyTasks) {
+                TaskVO vo = new TaskVO();
+                vo.setTaskId((String) historyTask.getClass().getMethod("getId").invoke(historyTask));
+                vo.setTaskName((String) historyTask.getClass().getMethod("getName").invoke(historyTask));
+                vo.setProcessInstanceId((String) historyTask.getClass().getMethod("getProcessInstanceId").invoke(historyTask));
+                
+                Object startTime = historyTask.getClass().getMethod("getStartTime").invoke(historyTask);
+                if (startTime != null) {
+                    java.util.Date startDate = (java.util.Date) startTime;
+                    vo.setCreateTime(startDate.toInstant()
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDateTime());
+                }
+                
+                // 获取流程实例信息
+                Object processInstance = runtimeService
+                        .createProcessInstanceQuery()
+                        .processInstanceId((String) historyTask.getClass().getMethod("getProcessInstanceId").invoke(historyTask))
+                        .singleResult();
+                
+                // 如果流程实例还存在（未结束），则从运行时获取信息
+                if (processInstance != null) {
+                    String businessKey = (String) processInstance.getClass().getMethod("getBusinessKey").invoke(processInstance);
+                    vo.setBusinessKey(businessKey);
+                    
+                    // 获取流程定义KEY
+                    String processDefId = (String) processInstance.getClass().getMethod("getProcessDefinitionId").invoke(processInstance);
+                    String processKey = processDefId.split(":")[0];
+                    vo.setProcessKey(processKey);
+                    
+                    // 获取流程名称
+                    ProcessDefinitionInfo info = definitionInfoMapper.selectOne(
+                            new LambdaQueryWrapper<ProcessDefinitionInfo>()
+                                    .eq(ProcessDefinitionInfo::getProcessKey, processKey)
+                    );
+                    if (info != null) {
+                        vo.setProcessName(info.getProcessName());
+                    }
+                    
+                    // 填充业务信息
+                    fillBusinessInfo(vo, businessKey, processKey);
+                } else {
+                    // 如果流程实例已结束，从历史记录中获取信息
+                    Object historicProcessInstance = historyService
+                            .createHistoricProcessInstanceQuery()
+                            .processInstanceId((String) historyTask.getClass().getMethod("getProcessInstanceId").invoke(historyTask))
+                            .singleResult();
+                    
+                    if (historicProcessInstance != null) {
+                        String businessKey = (String) historicProcessInstance.getClass().getMethod("getBusinessKey").invoke(historicProcessInstance);
+                        vo.setBusinessKey(businessKey);
+                        
+                        // 获取流程定义KEY
+                        String processDefId = (String) historicProcessInstance.getClass().getMethod("getProcessDefinitionId").invoke(historicProcessInstance);
+                        String processKey = processDefId.split(":")[0];
+                        vo.setProcessKey(processKey);
+                        
+                        // 获取流程名称
+                        ProcessDefinitionInfo info = definitionInfoMapper.selectOne(
+                                new LambdaQueryWrapper<ProcessDefinitionInfo>()
+                                        .eq(ProcessDefinitionInfo::getProcessKey, processKey)
+                        );
+                        if (info != null) {
+                            vo.setProcessName(info.getProcessName());
+                        }
+                        
+                        // 填充业务信息
+                        fillBusinessInfo(vo, businessKey, processKey);
+                    }
+                }
+                
+                taskVOList.add(vo);
+            }
+            
+            resultPage.setRecords(taskVOList);
+            resultPage.setTotal(total);
+            
+            return resultPage;
+            
+        } catch (Exception e) {
+            log.error("查询用户已办任务失败", e);
+            throw new RuntimeException("查询已办任务失败：" + e.getMessage());
         }
     }
     

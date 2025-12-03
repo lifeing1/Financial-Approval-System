@@ -85,12 +85,21 @@ public class PettyCashController {
     }
     
     /**
+     * 查询详情（包含用户和部门信息）
+     */
+    @Operation(summary = "查询详情（包含用户和部门信息）")
+    @GetMapping("/detail/{id}")
+    public Result<?> getDetailWithUserInfo(@PathVariable Long id) {
+        return Result.success(pettyCashService.getDetailWithUserInfo(id));
+    }
+    
+    /**
      * 审批通过
      */
     @Operation(summary = "审批通过")
-    @PostMapping("/approve/{id}")
-    public Result<?> approve(@PathVariable Long id, @RequestParam String opinion) {
-        pettyCashService.approve(id, opinion);
+    @PostMapping("/approve/{taskId}")
+    public Result<?> approve(@PathVariable String taskId, @RequestParam String opinion) {
+        pettyCashService.approve(taskId, opinion);
         return Result.success("审批成功");
     }
     
@@ -98,9 +107,18 @@ public class PettyCashController {
      * 审批驳回
      */
     @Operation(summary = "审批驳回")
-    @PostMapping("/reject/{id}")
-    public Result<?> reject(@PathVariable Long id, @RequestParam String opinion) {
-        pettyCashService.reject(id, opinion);
+    @PostMapping("/reject/{taskId}")
+    public Result<?> reject(@PathVariable String taskId, @RequestParam String opinion) {
+        pettyCashService.reject(taskId, opinion);
         return Result.success("驳回成功");
+    }
+    
+    /**
+     * 获取审批历史记录
+     */
+    @Operation(summary = "获取审批历史记录")
+    @GetMapping("/history/{id}")
+    public Result<?> getApprovalHistory(@PathVariable Long id) {
+        return Result.success(pettyCashService.getApprovalHistory(id));
     }
 }

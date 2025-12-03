@@ -42,8 +42,21 @@
           <n-descriptions-item label="申请编号">
             {{ detailData.applyNo }}
           </n-descriptions-item>
+          <n-descriptions-item label="申请人">
+            {{ detailData.userName || '-' }} ({{ detailData.deptName || '-' }})
+          </n-descriptions-item>
           <n-descriptions-item label="申请状态">
-            <n-tag :type="getStatusTag(detailData.status).type">
+            <n-button 
+              v-if="detailData.status !== 0" 
+              text 
+              type="primary" 
+              @click="showApprovalHistory(detailData.id)"
+            >
+              <n-tag :type="getStatusTag(detailData.status).type">
+                {{ getStatusTag(detailData.status).label }}
+              </n-tag>
+            </n-button>
+            <n-tag v-else :type="getStatusTag(detailData.status).type">
               {{ getStatusTag(detailData.status).label }}
             </n-tag>
           </n-descriptions-item>
@@ -53,14 +66,14 @@
           <n-descriptions-item label="申请金额">
             <span style="color: #18a058; font-weight: 600;">¥{{ detailData.amount || 0 }}</span>
           </n-descriptions-item>
-          <n-descriptions-item label="使用期限">
-            {{ detailData.usePeriod || '-' }}
-          </n-descriptions-item>
-          <n-descriptions-item v-if="detailData.remark" label="备注" :span="2">
-            {{ detailData.remark }}
+<!--          <n-descriptions-item label="使用期限">-->
+<!--            {{ detailData.usePeriod || '-' }}-->
+<!--          </n-descriptions-item>-->
+          <n-descriptions-item label="备注" :span="2">
+            {{ detailData.remark || '-' }}
           </n-descriptions-item>
           <n-descriptions-item label="申请时间" :span="2">
-            {{ detailData.applyDate }}
+            {{ detailData.createTime }}
           </n-descriptions-item>
         </n-descriptions>
       </n-spin>
@@ -68,6 +81,41 @@
       <template #footer>
         <n-space justify="end">
           <n-button @click="showDetailModal = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+    
+    <!-- 审批流程弹窗 -->
+    <n-modal
+      v-model:show="showApprovalHistoryModal"
+      preset="card"
+      title="审批流程"
+      style="width: 800px"
+      :bordered="false"
+    >
+      <n-spin :show="approvalHistoryLoading">
+        <n-timeline v-if="approvalHistory.length > 0">
+          <n-timeline-item 
+            v-for="(item, index) in approvalHistory" 
+            :key="index"
+            :type="getTimelineType(item.action)"
+            :title="getActionLabel(item.action)"
+            :time="item.createTime"
+          >
+            <template #default>
+              <n-text depth="3" style="font-size: 12px;">审批意见：{{ item.opinion || '无' }}</n-text>
+            </template>
+            <template #footer>
+              <n-text depth="3" style="font-size: 12px;">审批人：{{ item.approverName }}</n-text>
+            </template>
+          </n-timeline-item>
+        </n-timeline>
+        <n-empty v-else description="暂无审批记录" />
+      </n-spin>
+      
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showApprovalHistoryModal = false">关闭</n-button>
         </n-space>
       </template>
     </n-modal>
@@ -88,9 +136,13 @@ import {
   NDescriptions,
   NDescriptionsItem,
   NSpin,
+  NTimeline,
+  NTimelineItem,
+  NEmpty,
+  NText,
   useMessage
 } from 'naive-ui'
-import { getMyList, getDetail } from '@/api/pettyCash'
+import { getMyList, getDetailWithUserInfo, getApprovalHistory } from '@/api/pettyCash'
 
 const router = useRouter()
 const message = useMessage()
@@ -101,6 +153,11 @@ const statusFilter = ref(null)
 const showDetailModal = ref(false)
 const detailLoading = ref(false)
 const detailData = ref(null)
+
+// 审批历史相关
+const showApprovalHistoryModal = ref(false)
+const approvalHistoryLoading = ref(false)
+const approvalHistory = ref([])
 
 const pagination = ref({
   page: 1,
@@ -127,6 +184,30 @@ const getStatusTag = (status) => {
   return map[status] || { type: 'default', label: '未知' }
 }
 
+// 获取时间线类型
+const getTimelineType = (action) => {
+  switch (action) {
+    case 'APPROVE':
+      return 'success'
+    case 'REJECT':
+      return 'error'
+    default:
+      return 'info'
+  }
+}
+
+// 获取操作标签
+const getActionLabel = (action) => {
+  switch (action) {
+    case 'APPROVE':
+      return '审批通过'
+    case 'REJECT':
+      return '审批驳回'
+    default:
+      return '提交申请'
+  }
+}
+
 const columns = [
   {
     title: '申请编号',
@@ -136,34 +217,49 @@ const columns = [
   {
     title: '申请事由',
     key: 'reason',
+    width: 120,
     ellipsis: {
       tooltip: true
     }
   },
   {
     title: '申请金额',
-    key: 'amount',
+    key: 'totalAmount',
     width: 120,
-    render: (row) => `¥${row.amount || 0}`
+    render: (row) => `¥${row.totalAmount || 0}`
   },
-  {
-    title: '使用期限',
-    key: 'usePeriod',
-    width: 120
-  },
+  // {
+  //   title: '使用期限',
+  //   key: 'usePeriod',
+  //   width: 120
+  // },
   {
     title: '状态',
     key: 'status',
     width: 100,
     render: (row) => {
-      const tag = getStatusTag(row.status)
-      return h(NTag, { type: tag.type }, { default: () => tag.label })
+      // 对于非草稿状态，显示为可点击的按钮
+      if (row.status !== 0) {
+        return h(NButton, {
+          text: true,
+          type: 'primary',
+          onClick: () => showApprovalHistory(row.id)
+        }, {
+          default: () => h(NTag, { type: getStatusTag(row.status).type }, { 
+            default: () => getStatusTag(row.status).label 
+          })
+        })
+      } else {
+        // 草稿状态显示为普通标签
+        const tag = getStatusTag(row.status)
+        return h(NTag, { type: tag.type }, { default: () => tag.label })
+      }
     }
   },
   {
     title: '申请时间',
-    key: 'applyDate',
-    width: 150
+    key: 'createTime',
+    width: 180
   },
   {
     title: '操作',
@@ -215,7 +311,7 @@ const handleView = async (id) => {
   try {
     showDetailModal.value = true
     detailLoading.value = true
-    const res = await getDetail(id)
+    const res = await getDetailWithUserInfo(id)
     detailData.value = res.data
   } catch (error) {
     console.error('获取详情失败：', error)
@@ -223,6 +319,21 @@ const handleView = async (id) => {
     showDetailModal.value = false
   } finally {
     detailLoading.value = false
+  }
+}
+
+// 显示审批历史
+const showApprovalHistory = async (id) => {
+  try {
+    showApprovalHistoryModal.value = true
+    approvalHistoryLoading.value = true
+    const res = await getApprovalHistory(id)
+    approvalHistory.value = res.data
+  } catch (error) {
+    console.error('获取审批历史失败：', error)
+    message.error('获取审批历史失败')
+  } finally {
+    approvalHistoryLoading.value = false
   }
 }
 

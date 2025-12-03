@@ -88,12 +88,12 @@ const routes = [
         component: () => import('@/views/statistics/PettyCash.vue'),
         meta: { title: '备用金统计' }
       },
-      // {
-      //   path: '/statistics/efficiency',
-      //   name: 'EfficiencyStats',
-      //   component: () => import('@/views/statistics/Efficiency.vue'),
-      //   meta: { title: '审批效率' }
-      // },
+      {
+        path: '/statistics/efficiency',
+        name: 'EfficiencyStats',
+        component: () => import('@/views/statistics/Efficiency.vue'),
+        meta: { title: '审批效率' }
+      },
       {
         path: '/profile',
         name: 'Profile',

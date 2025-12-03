@@ -73,15 +73,10 @@
             <version>${sa-token.version}</version>
         </dependency>
         
-        <!-- Flowable 工作流引擎 - 手动配置核心引擎 -->
+        <!-- Flowable 工作流引擎 - 使用Spring Boot Starter -->
         <dependency>
             <groupId>org.flowable</groupId>
-            <artifactId>flowable-engine</artifactId>
-            <version>${flowable.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flowable</groupId>
-            <artifactId>flowable-spring</artifactId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
             <version>${flowable.version}</version>
         </dependency>
         

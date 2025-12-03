@@ -290,11 +290,22 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     @Override
     public IPage<TaskVO> getDoneList(Page<BusinessTrip> page) {
         // 查询当前用户的已办任务
-        // 注：这里需要从工作流历史中查询，暂时返回空列表
-        // 完整实现需要Flowable的HistoryService
+        Long userId = StpUtil.getLoginIdAsLong();
+        
+        // 调用工作流服务获取已办任务
+        Page<TaskVO> taskPage = workflowService.getUserHistoryTasks(userId, 
+                (int) page.getCurrent(), 
+                (int) page.getSize());
+        
+        // 过滤出差申请的任务
+        List<TaskVO> businessTripTasks = taskPage.getRecords().stream()
+                .filter(task -> "business_trip".equals(task.getBusinessType()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        // 构建返回结果
         Page<TaskVO> resultPage = new Page<>(page.getCurrent(), page.getSize());
-        resultPage.setRecords(new ArrayList<>());
-        resultPage.setTotal(0);
+        resultPage.setRecords(businessTripTasks);
+        resultPage.setTotal(businessTripTasks.size());
         
         return resultPage;
     }
