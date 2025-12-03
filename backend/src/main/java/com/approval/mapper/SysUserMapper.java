@@ -21,4 +21,13 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "WHERE r.role_code = #{roleCode} AND u.deleted = 0 AND r.deleted = 0 " +
             "AND u.status = 1 LIMIT 1")
     SysUser selectUserByRoleCode(@Param("roleCode") String roleCode);
+    
+    /**
+     * 根据部门ID查找部门负责人
+     */
+    @Select("SELECT u.* FROM sys_user u " +
+            "INNER JOIN sys_dept d ON u.id = d.leader_id " +
+            "WHERE d.id = #{deptId} AND u.deleted = 0 AND d.deleted = 0 " +
+            "AND u.status = 1 LIMIT 1")
+    SysUser selectManagerByDeptId(@Param("deptId") Long deptId);
 }

@@ -87,4 +87,9 @@ public interface WorkflowService {
      * 获取用户待办任务
      */
     Page<TaskVO> getUserTasks(Long userId, Integer current, Integer size);
+    
+    /**
+     * 获取用户已办任务
+     */
+    Page<TaskVO> getUserHistoryTasks(Long userId, Integer current, Integer size);
 }

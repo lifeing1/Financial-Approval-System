@@ -24,7 +24,7 @@
             {{ detailData.applyNo }}
           </n-descriptions-item>
           <n-descriptions-item label="申请人">
-            {{ detailData.userName }} ({{ detailData.deptName }})
+            {{ detailData.userName || '-' }} ({{ detailData.deptName || '-' }})
           </n-descriptions-item>
           <n-descriptions-item label="申请事由" :span="2">
             {{ detailData.reason }}
@@ -75,7 +75,7 @@ import {
   NSpace,
   useMessage
 } from 'naive-ui'
-import { getDoneList, getDetail } from '@/api/pettyCash'
+import { getDoneList, getDetailWithUserInfo } from '@/api/pettyCash'
 
 const message = useMessage()
 const loading = ref(false)
@@ -105,7 +105,7 @@ const columns = [
   { title: '申请人', key: 'userName', width: 100 },
   { title: '部门', key: 'deptName', width: 120 },
   { title: '申请事由', key: 'reason', ellipsis: { tooltip: true } },
-  { title: '申请金额', key: 'amount', width: 120, render: (row) => `¥${row.amount || 0}` },
+  { title: '申请金额', key: 'totalAmount', width: 120, render: (row) => `¥${row.totalAmount || 0}` },
   {
     title: '审批结果',
     key: 'status',
@@ -148,7 +148,7 @@ const handleView = async (id) => {
   try {
     showDetailModal.value = true
     detailLoading.value = true
-    const res = await getDetail(id)
+    const res = await getDetailWithUserInfo(id)
     detailData.value = res.data
   } catch (error) {
     console.error('获取详情失败：', error)

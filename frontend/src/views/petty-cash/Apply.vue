@@ -34,11 +34,11 @@
             </n-form-item>
           </n-gi>
           
-          <n-gi>
-            <n-form-item label="使用期限" path="usePeriod">
-              <n-input v-model:value="formData.usePeriod" placeholder="例如：3个月" />
-            </n-form-item>
-          </n-gi>
+<!--          <n-gi>-->
+<!--            <n-form-item label="使用期限" path="usePeriod">-->
+<!--              <n-input v-model:value="formData.usePeriod" placeholder="例如：3个月" />-->
+<!--            </n-form-item>-->
+<!--          </n-gi>-->
           
 <!--          <n-gi :span="2">-->
 <!--            <n-form-item label="还款计划" path="repaymentPlan">-->

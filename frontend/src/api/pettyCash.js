@@ -56,6 +56,14 @@ export function getDetail(id) {
   })
 }
 
+// 查询详情（包含用户和部门信息）
+export function getDetailWithUserInfo(id) {
+  return request({
+    url: `/petty-cash/detail/${id}`,
+    method: 'get'
+  })
+}
+
 // 审批通过
 export function approve(id, opinion) {
   return request({
@@ -71,5 +79,13 @@ export function reject(id, opinion) {
     url: `/petty-cash/reject/${id}`,
     method: 'post',
     params: { opinion }
+  })
+}
+
+// 获取审批历史记录
+export function getApprovalHistory(id) {
+  return request({
+    url: `/petty-cash/history/${id}`,
+    method: 'get'
   })
 }

@@ -52,12 +52,6 @@
                 </template>
               </n-thing>
             </n-list-item>
-            
-            <template #footer>
-              <n-button text type="primary" @click="router.push('/business-trip/todo')">
-                查看全部 →
-              </n-button>
-            </template>
           </n-list>
         </n-card>
       </n-gi>
@@ -77,12 +71,6 @@
                 </template>
               </n-thing>
             </n-list-item>
-            
-            <template #footer>
-              <n-button text type="primary" @click="router.push('/business-trip/my')">
-                查看全部 →
-              </n-button>
-            </template>
           </n-list>
         </n-card>
       </n-gi>
