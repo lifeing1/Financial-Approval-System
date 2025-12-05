@@ -43,7 +43,17 @@
             {{ detailData.applyNo }}
           </n-descriptions-item>
           <n-descriptions-item label="申请状态">
-            <n-tag :type="getStatusTag(detailData.status).type">
+            <n-button 
+              v-if="detailData.status !== 0" 
+              text 
+              type="primary" 
+              @click="showApprovalHistory(detailData.id)"
+            >
+              <n-tag :type="getStatusTag(detailData.status).type">
+                {{ getStatusTag(detailData.status).label }}
+              </n-tag>
+            </n-button>
+            <n-tag v-else :type="getStatusTag(detailData.status).type">
               {{ getStatusTag(detailData.status).label }}
             </n-tag>
           </n-descriptions-item>
@@ -127,6 +137,95 @@
       </template>
     </n-modal>
     
+    <!-- 审批流程弹窗 -->
+    <n-modal
+      v-model:show="showApprovalHistoryModal"
+      preset="card"
+      title="审批流程"
+      style="width: 800px"
+      :bordered="false"
+    >
+      <n-spin :show="approvalHistoryLoading">
+        <!-- 新的审批流程展示 -->
+        <div v-if="processNodes && processNodes.length > 0" class="process-flow-container">
+          <n-steps :current="currentStep" :status="stepStatus">
+            <n-step 
+              v-for="(node, index) in processNodes" 
+              :key="index"
+              :title="node.nodeName"
+              :description="getStepDescription(node, index)"
+            >
+              <template #icon>
+                <n-icon v-if="isNodeCompleted(index)">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                    <circle cx="12" cy="12" r="10" fill="#18a058"/>
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#ffffff"/>
+                  </svg>
+                </n-icon>
+                <n-icon v-else-if="isNodeCurrent(index)">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                    <circle cx="12" cy="12" r="10" fill="#2080f0"/>
+                    <polygon points="10,8 16,12 10,16" fill="#ffffff"/>
+                  </svg>
+                </n-icon>
+                <n-icon v-else>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                    <circle cx="12" cy="12" r="10" fill="#ccc"/>
+                  </svg>
+                </n-icon>
+              </template>
+            </n-step>
+          </n-steps>
+          
+          <!-- 审批详情 -->
+          <div class="approval-details" v-if="approvalHistory && approvalHistory.length > 0">
+            <n-divider title-placement="left">审批详情</n-divider>
+            <n-timeline>
+              <n-timeline-item 
+                v-for="(item, index) in approvalHistory" 
+                :key="index"
+                :type="getTimelineType(item.action)"
+                :title="getActionLabel(item.action)"
+                :time="item.createTime"
+              >
+                <template #default>
+                  <n-text depth="3" style="font-size: 12px;">审批意见：{{ item.opinion || '无' }}</n-text>
+                </template>
+                <template #footer>
+                  <n-text depth="3" style="font-size: 12px;">审批人：{{ item.approverName }}</n-text>
+                </template>
+              </n-timeline-item>
+            </n-timeline>
+          </div>
+        </div>
+        
+        <!-- 原有的时间线展示（作为备选） -->
+        <n-timeline v-else-if="approvalHistory.length > 0">
+          <n-timeline-item 
+            v-for="(item, index) in approvalHistory" 
+            :key="index"
+            :type="getTimelineType(item.action)"
+            :title="getActionLabel(item.action)"
+            :time="item.createTime"
+          >
+            <template #default>
+              <n-text depth="3" style="font-size: 12px;">审批意见：{{ item.opinion || '无' }}</n-text>
+            </template>
+            <template #footer>
+              <n-text depth="3" style="font-size: 12px;">审批人：{{ item.approverName }}</n-text>
+            </template>
+          </n-timeline-item>
+        </n-timeline>
+        <n-empty v-else description="暂无审批记录" />
+      </n-spin>
+      
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showApprovalHistoryModal = false">关闭</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+    
     <!-- 附件预览弹窗 -->
     <n-modal
       v-model:show="showPreviewModal"
@@ -188,10 +287,16 @@ import {
   NIcon,
   NImage,
   NEmpty,
+  NTimeline,
+  NTimelineItem,
+  NText,
+  NSteps,
+  NStep,
   useMessage
 } from 'naive-ui'
 import { AttachOutline as AttachIcon } from '@vicons/ionicons5'
-import { getMyList, getDetail } from '@/api/businessTrip'
+import { getMyList, getDetail, getApprovalHistory } from '@/api/businessTrip'
+import { getProcessNodes } from '@/api/workflow'
 
 const router = useRouter()
 const message = useMessage()
@@ -204,6 +309,14 @@ const detailLoading = ref(false)
 const detailData = ref(null)
 const showPreviewModal = ref(false)
 const previewFile = ref({ fileName: '', filePath: '' })
+
+// 审批历史相关
+const showApprovalHistoryModal = ref(false)
+const approvalHistoryLoading = ref(false)
+const approvalHistory = ref([])
+const processNodes = ref([]) // 流程节点信息
+const currentStep = ref(0) // 当前步骤
+const stepStatus = ref('process') // 步骤状态
 
 const pagination = ref({
   page: 1,
@@ -243,6 +356,64 @@ const getStatusTag = (status) => {
   return map[status] || { type: 'default', label: '未知' }
 }
 
+// 获取时间线类型
+const getTimelineType = (action) => {
+  switch (action) {
+    case 'APPROVE':
+      return 'success'
+    case 'REJECT':
+      return 'error'
+    default:
+      return 'info'
+  }
+}
+
+// 获取操作标签
+const getActionLabel = (action) => {
+  switch (action) {
+    case 'APPROVE':
+      return '审批通过'
+    case 'REJECT':
+      return '审批驳回'
+    default:
+      return '提交申请'
+  }
+}
+
+// 获取步骤描述
+const getStepDescription = (node, index) => {
+  // 查找该节点的审批记录
+  const approvalRecord = approvalHistory.value.find(record => {
+    // 这里需要根据实际情况匹配节点和审批记录
+    // 简化处理：假设节点顺序和审批记录顺序一致
+    return approvalHistory.value.indexOf(record) === index
+  })
+  
+  if (approvalRecord) {
+    return `${approvalRecord.approverName} - ${approvalRecord.createTime}`
+  }
+  
+  if (isNodeCompleted(index)) {
+    return '已完成'
+  } else if (isNodeCurrent(index)) {
+    return '进行中'
+  } else {
+    return '待处理'
+  }
+}
+
+// 判断节点是否已完成
+const isNodeCompleted = (index) => {
+  // 简化处理：假设前几个节点已完成
+  return index < approvalHistory.value.length
+}
+
+// 判断节点是否为当前节点
+const isNodeCurrent = (index) => {
+  // 简化处理：假设当前节点是下一个未完成的节点
+  return index === approvalHistory.value.length
+}
+
 const columns = [
   {
     title: '申请编号',
@@ -279,8 +450,22 @@ const columns = [
     key: 'status',
     width: 100,
     render: (row) => {
-      const tag = getStatusTag(row.status)
-      return h(NTag, { type: tag.type }, { default: () => tag.label })
+      // 对于非草稿状态，显示为可点击的按钮
+      if (row.status !== 0) {
+        return h(NButton, {
+          text: true,
+          type: 'primary',
+          onClick: () => showApprovalHistory(row.id)
+        }, {
+          default: () => h(NTag, { type: getStatusTag(row.status).type }, { 
+            default: () => getStatusTag(row.status).label 
+          })
+        })
+      } else {
+        // 草稿状态显示为普通标签
+        const tag = getStatusTag(row.status)
+        return h(NTag, { type: tag.type }, { default: () => tag.label })
+      }
     }
   },
   {
@@ -350,6 +535,31 @@ const handleView = async (id) => {
   }
 }
 
+// 显示审批历史
+const showApprovalHistory = async (id) => {
+  try {
+    showApprovalHistoryModal.value = true
+    approvalHistoryLoading.value = true
+    
+    // 获取审批历史记录
+    const historyRes = await getApprovalHistory(id)
+    approvalHistory.value = historyRes.data
+    
+    // 获取流程节点信息
+    const nodesRes = await getProcessNodes('businessTripProcess')
+    processNodes.value = nodesRes.data
+    
+    // 计算当前步骤
+    currentStep.value = approvalHistory.value.length
+    stepStatus.value = detailData.value && detailData.value.status === 3 ? 'error' : 'process'
+  } catch (error) {
+    console.error('获取审批历史失败：', error)
+    message.error('获取审批历史失败')
+  } finally {
+    approvalHistoryLoading.value = false
+  }
+}
+
 const handleEdit = (id) => {
   // 跳转到申请页面，带上ID进行编辑
   router.push({ path: '/business-trip/apply', query: { id } })
@@ -396,5 +606,13 @@ onMounted(() => {
 <style scoped>
 .my-list {
   max-width: 1400px;
+}
+
+.process-flow-container {
+  padding: 20px 0;
+}
+
+.approval-details {
+  margin-top: 30px;
 }
 </style>

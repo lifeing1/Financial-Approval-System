@@ -3,6 +3,7 @@ package com.approval.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.approval.common.exception.BusinessException;
 import com.approval.dto.PettyCashDTO;
+import com.approval.entity.ApprovalOpinion;
 import com.approval.entity.PettyCash;
 import com.approval.entity.SysUser;
 import com.approval.entity.SysDept;
@@ -14,6 +15,7 @@ import com.approval.service.PettyCashService;
 import com.approval.service.WorkflowService;
 import com.approval.vo.PettyCashVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -154,7 +156,12 @@ public class PettyCashServiceImpl implements PettyCashService {
         java.util.List<com.approval.vo.TaskVO> pettyCashTasks = taskPage.getRecords().stream()
                 .filter(task -> "petty_cash".equals(task.getBusinessType()))
                 .collect(java.util.stream.Collectors.toList());
-        
+
+        //审批结果赋值
+        pettyCashTasks.forEach(task -> {task.setStatus(pettyCashMapper.selectById(task.getId()).getStatus());});
+
+        //每个审批人的审批时间
+        pettyCashTasks.forEach(task -> {task.setApproveTime(approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>().eq("task_id", task.getTaskId())).getCreateTime());});
         // 构建返回结果
         Page<com.approval.vo.TaskVO> resultPage = new Page<>(page.getCurrent(), page.getSize());
         resultPage.setRecords(pettyCashTasks);
@@ -193,7 +200,14 @@ public class PettyCashServiceImpl implements PettyCashService {
                 vo.setDeptName(dept.getDeptName());
             }
         }
-        
+
+        //审批时间处理
+        LocalDateTime approvalTime = approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>()
+                .eq("business_id", vo.getId())
+                .eq("approver_id", StpUtil.getLoginIdAsLong())).getCreateTime();
+        //createTime被占用，用updateTime接收审批时间
+        vo.setUpdateTime(approvalTime);
+
         return vo;
     }
     

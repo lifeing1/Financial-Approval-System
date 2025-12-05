@@ -117,9 +117,16 @@ const buildMenuOptions = (menus) => {
   if (!menus || menus.length === 0) return []
   
   return menus.map(menu => {
+    // 确保菜单项有有效的key
+    let menuKey = menu.path || menu.menuCode || `menu_${menu.id}`
+    // 处理可能的无效路径
+    if (!menuKey || menuKey === 'null') {
+      menuKey = `menu_${menu.id}`
+    }
+    
     const option = {
       label: menu.menuName,
-      key: menu.path || menu.menuCode,
+      key: menuKey,
       icon: menu.icon ? () => h(iconMap[menu.icon] || HomeOutline) : undefined
     }
     
@@ -174,10 +181,14 @@ const userOptions = [
 
 const handleMenuSelect = (key) => {
   activeKey.value = key
-  router.push(key)
-}
-
-const handleUserAction = async (key) => {
+  
+  // 检查key是否有效
+  if (!key || key === 'null') {
+    console.error('Invalid menu key:', key)
+    return
+  }
+  
+  // 处理特殊菜单项
   if (key === 'logout') {
     dialog.warning({
       title: '退出登录',
@@ -195,9 +206,35 @@ const handleUserAction = async (key) => {
         }
       }
     })
-  } else if (key === 'profile') {
-    router.push('/profile')
+    return
   }
+  
+  if (key === 'profile') {
+    router.push('/profile')
+    return
+  }
+  
+  // 对于其他菜单项，验证路由后导航
+  try {
+    // 检查路由是否存在
+    const resolvedRoute = router.resolve(key)
+    if (resolvedRoute.matched.length > 0) {
+      router.push(key).catch(err => {
+        console.error('Navigation error:', err)
+        message.error('页面跳转失败')
+      })
+    } else {
+      console.error('No matching route found for key:', key)
+      message.error('找不到对应的页面')
+    }
+  } catch (err) {
+    console.error('Route resolution error:', err)
+    message.error('页面跳转失败')
+  }
+}
+
+const handleUserAction = async (key) => {
+  handleMenuSelect(key)
 }
 </script>
 

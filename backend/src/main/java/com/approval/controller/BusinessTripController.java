@@ -1,7 +1,8 @@
 package com.approval.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.approval.common.result.Result;
-import com.approval.dto.BusinessTripDTO;
+import com.approval.vo.BusinessTripVO;
 import com.approval.service.BusinessTripService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,12 +12,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 出差审批控制器
+ * 出差申请控制器
  */
-@Tag(name = "出差审批管理")
+@Tag(name = "出差申请管理")
 @RestController
 @RequestMapping("/api/business-trip")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class BusinessTripController {
     
     private final BusinessTripService businessTripService;
@@ -26,8 +28,8 @@ public class BusinessTripController {
      */
     @Operation(summary = "保存草稿")
     @PostMapping("/draft")
-    public Result<?> saveDraft(@Valid @RequestBody BusinessTripDTO dto) {
-        Long id = businessTripService.saveDraft(dto);
+    public Result<?> saveDraft(@Valid @RequestBody BusinessTripVO vo) {
+        Long id = businessTripService.saveDraft(vo);
         return Result.success(id);
     }
     
@@ -35,9 +37,9 @@ public class BusinessTripController {
      * 提交申请
      */
     @Operation(summary = "提交申请")
-    @PostMapping("/submit")
-    public Result<?> submit(@Valid @RequestBody BusinessTripDTO dto) {
-        businessTripService.submitApply(dto);
+    @PostMapping("/submit/{id}")
+    public Result<?> submit(@PathVariable Long id) {
+        businessTripService.submitApply(id);
         return Result.success("提交成功");
     }
     
@@ -47,8 +49,8 @@ public class BusinessTripController {
     @Operation(summary = "我的申请列表")
     @GetMapping("/my")
     public Result<?> getMyList(@RequestParam(defaultValue = "1") Integer current,
-                               @RequestParam(defaultValue = "10") Integer size,
-                               @RequestParam(required = false) Integer status) {
+                              @RequestParam(defaultValue = "10") Integer size,
+                              @RequestParam(required = false) Integer status) {
         Page<com.approval.entity.BusinessTrip> page = new Page<>(current, size);
         return Result.success(businessTripService.getMyApplyList(page, status));
     }
@@ -59,7 +61,7 @@ public class BusinessTripController {
     @Operation(summary = "待办列表")
     @GetMapping("/todo")
     public Result<?> getTodoList(@RequestParam(defaultValue = "1") Integer current,
-                                 @RequestParam(defaultValue = "10") Integer size) {
+                                @RequestParam(defaultValue = "10") Integer size) {
         Page<com.approval.entity.BusinessTrip> page = new Page<>(current, size);
         return Result.success(businessTripService.getTodoList(page));
     }
@@ -70,7 +72,7 @@ public class BusinessTripController {
     @Operation(summary = "已办列表")
     @GetMapping("/done")
     public Result<?> getDoneList(@RequestParam(defaultValue = "1") Integer current,
-                                 @RequestParam(defaultValue = "10") Integer size) {
+                                @RequestParam(defaultValue = "10") Integer size) {
         Page<com.approval.entity.BusinessTrip> page = new Page<>(current, size);
         return Result.success(businessTripService.getDoneList(page));
     }
@@ -102,5 +104,14 @@ public class BusinessTripController {
     public Result<?> reject(@PathVariable String taskId, @RequestParam String opinion) {
         businessTripService.reject(taskId, opinion);
         return Result.success("驳回成功");
+    }
+    
+    /**
+     * 获取审批历史记录
+     */
+    @Operation(summary = "获取审批历史记录")
+    @GetMapping("/history/{id}")
+    public Result<?> getApprovalHistory(@PathVariable Long id) {
+        return Result.success(businessTripService.getApprovalHistory(id));
     }
 }

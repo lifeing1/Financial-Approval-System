@@ -22,6 +22,16 @@ export function getProcessDefinitionDetail(processKey) {
 }
 
 /**
+ * 获取流程的所有节点信息
+ */
+export function getProcessNodes(processKey) {
+  return request({
+    url: `/workflow/nodes/${processKey}`,
+    method: 'get'
+  })
+}
+
+/**
  * 部署流程（文件上传）
  */
 export function deployProcessByFile(data) {
