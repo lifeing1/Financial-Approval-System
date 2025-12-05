@@ -32,10 +32,10 @@
         </sequenceFlow>
         <sequenceFlow id="flow5" sourceRef="financeApproval" targetRef="financeGateway"/>
         <sequenceFlow id="flow6" sourceRef="financeGateway" targetRef="generalManagerApproval">
-            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount > 3000}]]></conditionExpression>
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount > 3000.0}]]></conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="flow6_1" sourceRef="financeGateway" targetRef="approvedEnd">
-            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount <= 3000}]]></conditionExpression>
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true && amount <= 3000.0}]]></conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="flow7" sourceRef="financeGateway" targetRef="rejectedEnd">
             <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == false}]]></conditionExpression>

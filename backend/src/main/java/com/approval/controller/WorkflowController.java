@@ -1,19 +1,21 @@
 package com.approval.controller;
 
 import com.approval.common.result.Result;
+import com.approval.dto.ProcessDefinitionDTO;
 import com.approval.dto.ProcessDeployRequest;
 import com.approval.service.WorkflowService;
+import com.approval.vo.TaskVO;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
- * 工作流管理控制器
+ * 工作流控制器
  */
 @Tag(name = "工作流管理")
 @RestController
@@ -24,29 +26,29 @@ public class WorkflowController {
     private final WorkflowService workflowService;
     
     /**
-     * 部署流程（文件上传）
+     * 部署流程（文件上传方式）
      */
-    @Operation(summary = "部署流程（文件上传）")
+    @Operation(summary = "部署流程（文件上传方式）")
     @PostMapping("/deploy/file")
     public Result<?> deployProcessByFile(@RequestParam("file") MultipartFile file,
-                                          @RequestParam("processName") String processName) {
+                                         @RequestParam("processName") String processName) {
         String deploymentId = workflowService.deployProcess(file, processName);
         return Result.success(deploymentId);
     }
     
     /**
-     * 获取预置BPMN文件列表
+     * 获取预置的BPMN文件列表
      */
-    @Operation(summary = "获取预置BPMN文件列表")
+    @Operation(summary = "获取预置的BPMN文件列表")
     @GetMapping("/preset-files")
     public Result<?> getPresetBpmnFiles() {
         return Result.success(workflowService.getPresetBpmnFiles());
     }
     
     /**
-     * 部署预置BPMN文件
+     * 部署预置的BPMN文件
      */
-    @Operation(summary = "部署预置BPMN文件")
+    @Operation(summary = "部署预置的BPMN文件")
     @PostMapping("/deploy/preset")
     public Result<?> deployPresetBpmn(@RequestParam("fileName") String fileName,
                                       @RequestParam("processName") String processName) {
@@ -55,9 +57,9 @@ public class WorkflowController {
     }
     
     /**
-     * 部署流程（可视化设计）
+     * 部署流程（设计器方式）
      */
-    @Operation(summary = "部署流程（可视化设计）")
+    @Operation(summary = "部署流程（设计器方式）")
     @PostMapping("/deploy/design")
     public Result<?> deployProcessByDesign(@RequestBody ProcessDeployRequest request) {
         String deploymentId = workflowService.deployProcessByDesign(request);
@@ -70,7 +72,7 @@ public class WorkflowController {
     @Operation(summary = "删除流程部署")
     @DeleteMapping("/deploy/{deploymentId}")
     public Result<?> deleteDeployment(@PathVariable String deploymentId,
-                                      @RequestParam(defaultValue = "false") boolean cascade) {
+                                     @RequestParam(defaultValue = "false") boolean cascade) {
         workflowService.deleteDeployment(deploymentId, cascade);
         return Result.success("删除成功");
     }
@@ -81,8 +83,8 @@ public class WorkflowController {
     @Operation(summary = "获取流程定义列表")
     @GetMapping("/definition/list")
     public Result<?> getProcessDefinitionList(@RequestParam(defaultValue = "1") Integer current,
-                                              @RequestParam(defaultValue = "10") Integer size,
-                                              @RequestParam(required = false) String category) {
+                                             @RequestParam(defaultValue = "10") Integer size,
+                                             @RequestParam(required = false) String category) {
         return Result.success(workflowService.getProcessDefinitionList(current, size, category));
     }
     
@@ -93,6 +95,15 @@ public class WorkflowController {
     @GetMapping("/definition/{processKey}")
     public Result<?> getProcessDefinitionDetail(@PathVariable String processKey) {
         return Result.success(workflowService.getProcessDefinitionDetail(processKey));
+    }
+    
+    /**
+     * 获取流程的所有节点信息
+     */
+    @Operation(summary = "获取流程的所有节点信息")
+    @GetMapping("/nodes/{processKey}")
+    public Result<?> getProcessNodes(@PathVariable String processKey) {
+        return Result.success(workflowService.getProcessNodes(processKey));
     }
     
     /**
@@ -129,16 +140,9 @@ public class WorkflowController {
      */
     @Operation(summary = "导出流程BPMN文件")
     @GetMapping("/export/{processDefinitionId}")
-    public ResponseEntity<byte[]> exportProcessBpmn(@PathVariable String processDefinitionId) {
-        byte[] bpmnData = workflowService.exportProcessBpmn(processDefinitionId);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setContentDispositionFormData("attachment", processDefinitionId + ".bpmn20.xml");
-        
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(bpmnData);
+    public Result<?> exportProcessBpmn(@PathVariable String processDefinitionId) {
+        byte[] bpmnBytes = workflowService.exportProcessBpmn(processDefinitionId);
+        return Result.success(bpmnBytes);
     }
     
     /**
@@ -151,38 +155,26 @@ public class WorkflowController {
     }
     
     /**
-     * 启动流程实例
-     */
-    @Operation(summary = "启动流程实例")
-    @PostMapping("/start")
-    public Result<?> startProcess(@RequestParam String processKey,
-                                  @RequestParam String businessKey,
-                                  @RequestParam Long userId,
-                                  @RequestParam(required = false) Long deptId) {
-        String processInstanceId = workflowService.startProcess(processKey, businessKey, userId, deptId);
-        return Result.success(processInstanceId);
-    }
-    
-    /**
-     * 完成任务
-     */
-    @Operation(summary = "完成任务")
-    @PostMapping("/task/complete")
-    public Result<?> completeTask(@RequestParam String taskId,
-                                  @RequestParam(required = false) String comment,
-                                  @RequestParam boolean approved) {
-        workflowService.completeTask(taskId, comment, approved);
-        return Result.success("操作成功");
-    }
-    
-    /**
      * 获取用户待办任务
      */
     @Operation(summary = "获取用户待办任务")
-    @GetMapping("/task/user/{userId}")
-    public Result<?> getUserTasks(@PathVariable Long userId,
-                                  @RequestParam(defaultValue = "1") Integer current,
+    @GetMapping("/tasks")
+    public Result<?> getUserTasks(@RequestParam(defaultValue = "1") Integer current,
                                   @RequestParam(defaultValue = "10") Integer size) {
+        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+        Page<TaskVO> page = new Page<>(current, size);
         return Result.success(workflowService.getUserTasks(userId, current, size));
+    }
+    
+    /**
+     * 获取用户已办任务
+     */
+    @Operation(summary = "获取用户已办任务")
+    @GetMapping("/history-tasks")
+    public Result<?> getUserHistoryTasks(@RequestParam(defaultValue = "1") Integer current,
+                                         @RequestParam(defaultValue = "10") Integer size) {
+        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+        Page<TaskVO> page = new Page<>(current, size);
+        return Result.success(workflowService.getUserHistoryTasks(userId, current, size));
     }
 }

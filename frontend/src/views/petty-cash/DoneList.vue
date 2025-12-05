@@ -32,9 +32,10 @@
           <n-descriptions-item label="申请金额">
             <span style="color: #18a058; font-weight: 600;">¥{{ detailData.amount || 0 }}</span>
           </n-descriptions-item>
-          <n-descriptions-item label="使用期限">
-            {{ detailData.usePeriod || '-' }}
-          </n-descriptions-item>
+
+<!--          <n-descriptions-item label="使用期限">-->
+<!--            {{ detailData.usePeriod || '-' }}-->
+<!--          </n-descriptions-item>-->
           <n-descriptions-item v-if="detailData.remark" label="备注" :span="2">
             {{ detailData.remark }}
           </n-descriptions-item>
@@ -47,7 +48,7 @@
             </n-tag>
           </n-descriptions-item>
           <n-descriptions-item label="审批时间">
-            {{ detailData.approveTime || '-' }}
+            {{ detailData.updateTime || '-' }}
           </n-descriptions-item>
         </n-descriptions>
       </n-spin>

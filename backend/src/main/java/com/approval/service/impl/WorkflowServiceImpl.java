@@ -37,13 +37,14 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -137,28 +138,23 @@ public class WorkflowServiceImpl implements WorkflowService {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             Resource[] resources = resolver.getResources(BPMN_RESOURCE_PATH);
             
-            return Arrays.stream(resources)
-                    .map(resource -> {
-                        try {
-                            return resource.getFilename();
-                        } catch (Exception e) {
-                            return null;
-                        }
-                    })
-                    .filter(name -> name != null)
-                    .collect(Collectors.toList());
+            List<String> fileNames = new ArrayList<>();
+            for (Resource resource : resources) {
+                fileNames.add(resource.getFilename());
+            }
+            
+            return fileNames;
         } catch (Exception e) {
             log.error("获取预置BPMN文件列表失败", e);
-            return new ArrayList<>();
+            throw new RuntimeException("获取预置BPMN文件列表失败：" + e.getMessage());
         }
     }
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String deployPresetBpmn(String fileName, String processName) {
-        log.info("开始部署预置流程，文件名：{}，流程名称：{}", fileName, processName);
         try {
-            // 1. 从 classpath 加载 BPMN 文件
+            // 1. 读取预置的BPMN文件
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             Resource resource = resolver.getResource("classpath:processes/" + fileName);
             
@@ -190,100 +186,44 @@ public class WorkflowServiceImpl implements WorkflowService {
             // 4. 保存或更新流程定义扩展信息
             log.info("开始保存流程定义扩展信息到process_definition_info表...");
             
-            // 先查询正常记录
             ProcessDefinitionInfo existingInfo = definitionInfoMapper.selectOne(
                     new LambdaQueryWrapper<ProcessDefinitionInfo>()
                             .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
             );
             
-            // 如果没有正常记录，查询是否有已删除的记录
-            if (existingInfo == null) {
-                existingInfo = definitionInfoMapper.selectOne(
-                        new LambdaQueryWrapper<ProcessDefinitionInfo>()
-                                .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
-                                .eq(ProcessDefinitionInfo::getDeleted, 1) // 查询已删除的记录
-                                .last("LIMIT 1")
-                );
-                if (existingInfo != null) {
-                    log.info("发现已删除的记录，ID：{}，准备恢复并更新", existingInfo.getId());
-                    // 恢复记录（将 deleted 设为 0）
-                    existingInfo.setDeleted(0);
-                }
-            }
-            
-            log.info("查询现有记录结果，existingInfo: {}", existingInfo != null ? existingInfo.getId() : "null");
-            
             if (existingInfo != null) {
+                log.info("更新现有流程定义记录，流程KEY：{}", processDefinition.getKey());
                 // 更新现有记录
                 existingInfo.setProcessName(processName);
                 existingInfo.setDeploymentId(deployment.getId());
                 existingInfo.setProcessDefinitionId(processDefinition.getId());
                 existingInfo.setVersion(processDefinition.getVersion());
                 existingInfo.setStatus(1); // 激活状态
-                // 根据流程 key 更新分类
-                if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
-                    existingInfo.setCategory("business_trip");
-                } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
-                    existingInfo.setCategory("petty_cash");
-                }
-                    definitionInfoMapper.updateById(existingInfo);
-                log.info("更新流程定义信息成功，流程KEY：{}，版本：{}", processDefinition.getKey(), processDefinition.getVersion());
+                definitionInfoMapper.updateById(existingInfo);
             } else {
-                // 新建记录 - 使用try-catch处理可能的重复键异常
-                log.info("准备插入新记录到process_definition_info表...");
-                try {
-                    ProcessDefinitionInfo definitionInfo = new ProcessDefinitionInfo();
-                    definitionInfo.setProcessKey(processDefinition.getKey());
-                    definitionInfo.setProcessName(processName);
-                    definitionInfo.setDeploymentId(deployment.getId());
-                    definitionInfo.setProcessDefinitionId(processDefinition.getId());
-                    definitionInfo.setVersion(processDefinition.getVersion());
-                    definitionInfo.setStatus(1);
-                    // 根据流程 key 猜测分类
-                    if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
-                        definitionInfo.setCategory("business_trip");
-                    } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
-                        definitionInfo.setCategory("petty_cash");
-                    }
-                    
-                    log.info("准备执行insert操作，processKey: {}, processName: {}", 
-                            definitionInfo.getProcessKey(), definitionInfo.getProcessName());
-                    int result = definitionInfoMapper.insert(definitionInfo);
-                    log.info("新增流程定义信息SUCCESS，流程KEY：{}，版本：{}，插入结果：{}，生成ID：{}", 
-                            processDefinition.getKey(), processDefinition.getVersion(), result, definitionInfo.getId());
-                } catch (org.springframework.dao.DuplicateKeyException e) {
-                    // 如果插入时发现重复（并发情况），则查询并更新
-                    log.warn("检测到重复的流程KEY（DuplicateKeyException），转为更新操作：{}", processDefinition.getKey());
-                    ProcessDefinitionInfo duplicateInfo = definitionInfoMapper.selectOne(
-                            new LambdaQueryWrapper<ProcessDefinitionInfo>()
-                                    .eq(ProcessDefinitionInfo::getProcessKey, processDefinition.getKey())
-                    );
-                    if (duplicateInfo != null) {
-                        duplicateInfo.setProcessName(processName);
-                        duplicateInfo.setDeploymentId(deployment.getId());
-                        duplicateInfo.setProcessDefinitionId(processDefinition.getId());
-                        duplicateInfo.setVersion(processDefinition.getVersion());
-                        duplicateInfo.setStatus(1);
-                        if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
-                            duplicateInfo.setCategory("business_trip");
-                        } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
-                            duplicateInfo.setCategory("petty_cash");
-                        }
-                        definitionInfoMapper.updateById(duplicateInfo);
-                        log.info("重复KEY更新成功");
-                    }
-                } catch (Exception ex) {
-                    log.error("插入process_definition_info表失败，异常类型：{}", ex.getClass().getName(), ex);
-                    throw ex;
+                log.info("新增流程定义记录，流程KEY：{}", processDefinition.getKey());
+                // 新建记录
+                ProcessDefinitionInfo definitionInfo = new ProcessDefinitionInfo();
+                definitionInfo.setProcessKey(processDefinition.getKey());
+                definitionInfo.setProcessName(processName);
+                definitionInfo.setDeploymentId(deployment.getId());
+                definitionInfo.setProcessDefinitionId(processDefinition.getId());
+                definitionInfo.setVersion(processDefinition.getVersion());
+                definitionInfo.setStatus(1);
+                // 根据流程 key 猜测分类
+                if (processDefinition.getKey().contains("businessTrip") || processDefinition.getKey().contains("trip")) {
+                    definitionInfo.setCategory("business_trip");
+                } else if (processDefinition.getKey().contains("pettyCash") || processDefinition.getKey().contains("cash")) {
+                    definitionInfo.setCategory("petty_cash");
                 }
+                definitionInfoMapper.insert(definitionInfo);
             }
             
-            log.info("预置流程部署完成，流程KEY：{}，版本：{}，准备返回部署ID", 
-                    processDefinition.getKey(), processDefinition.getVersion());
+            log.info("流程部署成功，流程KEY：{}，版本：{}", processDefinition.getKey(), processDefinition.getVersion());
             return deployment.getId();
         } catch (Exception e) {
-            log.error("预置流程部署失败，错误信息：{}", e.getMessage(), e);
-            throw new RuntimeException("预置流程部署失败：" + e.getMessage(), e);
+            log.error("流程部署失败", e);
+            throw new RuntimeException("流程部署失败：" + e.getMessage());
         }
     }
     
@@ -323,15 +263,15 @@ public class WorkflowServiceImpl implements WorkflowService {
             
             if (existingInfo != null) {
                 // 更新现有记录
+                existingInfo.setProcessName(request.getProcessName());
+                existingInfo.setCategory(request.getCategory());
+                existingInfo.setDescription(request.getDescription());
+                existingInfo.setDeploymentId(deployment.getId());
+                existingInfo.setProcessDefinitionId(processDefinition.getId());
+                existingInfo.setVersion(processDefinition.getVersion());
+                existingInfo.setStatus(1); // 激活状态
+                definitionInfoMapper.updateById(existingInfo);
                 definitionInfo = existingInfo;
-                definitionInfo.setProcessName(request.getProcessName());
-                definitionInfo.setCategory(request.getCategory());
-                definitionInfo.setDescription(request.getDescription());
-                definitionInfo.setDeploymentId(deployment.getId());
-                definitionInfo.setProcessDefinitionId(processDefinition.getId());
-                definitionInfo.setVersion(processDefinition.getVersion());
-                definitionInfo.setStatus(1); // 激活状态
-                definitionInfoMapper.updateById(definitionInfo);
             } else {
                 // 新建记录
                 definitionInfo = new ProcessDefinitionInfo();
@@ -374,46 +314,17 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteDeployment(String deploymentId, boolean cascade) {
         try {
-            // 删除部署（cascade为true时会级联删除流程实例）
+            // 1. 删除流程部署
             repositoryService.deleteDeployment(deploymentId, cascade);
             
-            // 删除扩展信息（如果是最后一个部署）
+            // 2. 删除扩展信息
             ProcessDefinitionInfo info = definitionInfoMapper.selectOne(
                     new LambdaQueryWrapper<ProcessDefinitionInfo>()
                             .eq(ProcessDefinitionInfo::getDeploymentId, deploymentId)
             );
             
             if (info != null) {
-                String processKey = info.getProcessKey();
-                
-                // 检查是否还有其他版本
-                long count = repositoryService.createProcessDefinitionQuery()
-                        .processDefinitionKey(processKey)
-                        .count();
-                
-                if (count == 0) {
-                    // 删除流程定义信息和节点配置
-                    definitionInfoMapper.deleteById(info.getId());
-                    nodeMapper.delete(new LambdaQueryWrapper<ProcessNode>()
-                            .eq(ProcessNode::getProcessKey, processKey));
-                } else {
-                    // 更新为最新版本信息
-                    ProcessDefinition latestDef = repositoryService.createProcessDefinitionQuery()
-                            .processDefinitionKey(processKey)
-                            .latestVersion()
-                            .singleResult();
-                    
-                    if (latestDef != null) {
-                        Deployment latestDeployment = repositoryService.createDeploymentQuery()
-                                .deploymentId(latestDef.getDeploymentId())
-                                .singleResult();
-                        
-                        info.setDeploymentId(latestDef.getDeploymentId());
-                        info.setProcessDefinitionId(latestDef.getId());
-                        info.setVersion(latestDef.getVersion());
-                        definitionInfoMapper.updateById(info);
-                    }
-                }
+                definitionInfoMapper.deleteById(info.getId());
             }
             
             log.info("流程部署删除成功，部署ID：{}", deploymentId);
@@ -425,28 +336,34 @@ public class WorkflowServiceImpl implements WorkflowService {
     
     @Override
     public Page<ProcessDefinitionDTO> getProcessDefinitionList(Integer current, Integer size, String category) {
-        Page<ProcessDefinitionDTO> resultPage = new Page<>(current, size);
-        
-        LambdaQueryWrapper<ProcessDefinitionInfo> wrapper = new LambdaQueryWrapper<>();
-        if (StrUtil.isNotBlank(category)) {
-            wrapper.eq(ProcessDefinitionInfo::getCategory, category);
+        try {
+            Page<ProcessDefinitionDTO> resultPage = new Page<>(current, size);
+            
+            // 1. 构建查询条件
+            LambdaQueryWrapper<ProcessDefinitionInfo> wrapper = new LambdaQueryWrapper<>();
+            if (StringUtils.hasText(category)) {
+                wrapper.eq(ProcessDefinitionInfo::getCategory, category);
+            }
+            wrapper.orderByDesc(ProcessDefinitionInfo::getCreateTime);
+            
+            // 2. 分页查询
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<ProcessDefinitionInfo> page = 
+                    new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size);
+            definitionInfoMapper.selectPage(page, wrapper);
+            
+            // 3. 转换为DTO
+            List<ProcessDefinitionDTO> dtoList = page.getRecords().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+            
+            resultPage.setRecords(dtoList);
+            resultPage.setTotal(page.getTotal());
+            
+            return resultPage;
+        } catch (Exception e) {
+            log.error("查询流程定义列表失败", e);
+            throw new RuntimeException("查询流程定义列表失败：" + e.getMessage());
         }
-        wrapper.orderByDesc(ProcessDefinitionInfo::getCreateTime);
-        
-        Page<ProcessDefinitionInfo> infoPage = definitionInfoMapper.selectPage(
-                new Page<>(current, size), wrapper);
-        
-        log.info("查询流程定义列表，总数：{}，当前页：{}，每页大小：{}，分类：{}", 
-                infoPage.getTotal(), current, size, category);
-        
-        List<ProcessDefinitionDTO> dtoList = infoPage.getRecords().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-        
-        resultPage.setRecords(dtoList);
-        resultPage.setTotal(infoPage.getTotal());
-        
-        return resultPage;
     }
     
     @Override
@@ -476,6 +393,20 @@ public class WorkflowServiceImpl implements WorkflowService {
         dto.setNodes(nodeDTOs);
         
         return dto;
+    }
+    
+    @Override
+    public List<ProcessNodeDTO> getProcessNodes(String processKey) {
+        // 加载节点配置
+        List<ProcessNode> nodes = nodeMapper.selectList(
+                new LambdaQueryWrapper<ProcessNode>()
+                        .eq(ProcessNode::getProcessKey, processKey)
+                        .orderByAsc(ProcessNode::getNodeOrder)
+        );
+        
+        return nodes.stream()
+                .map(this::convertNodeToDTO)
+                .collect(Collectors.toList());
     }
     
     @Override
@@ -511,13 +442,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         try {
             BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
             if (bpmnModel == null) {
-                throw new RuntimeException("流程定义不存在");
+                throw new RuntimeException("获取BPMN模型失败");
             }
             
             BpmnXMLConverter converter = new BpmnXMLConverter();
-            byte[] bpmnBytes = converter.convertToXML(bpmnModel);
-            
-            return new String(bpmnBytes, StandardCharsets.UTF_8);
+            byte[] bytes = converter.convertToXML(bpmnModel);
+            return new String(bytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.error("获取流程XML失败", e);
             throw new RuntimeException("获取流程XML失败：" + e.getMessage());
@@ -710,6 +640,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             opinion.setApproverName(currentUser.getRealName());
             opinion.setOpinion(comment);
             opinion.setAction(approved ? "APPROVE" : "REJECT");
+            opinion.setCreateTime(LocalDateTime.now());
             
             // 根据流程定义KEY判断业务类型
             if (processKey.contains("businessTrip") || processKey.contains("trip")) {
@@ -822,27 +753,24 @@ public class WorkflowServiceImpl implements WorkflowService {
             // 1. 查询用户待办任务
             org.flowable.task.api.TaskQuery taskQuery = taskService.createTaskQuery()
                     .taskAssignee(userId.toString())
+                    .active()
                     .orderByTaskCreateTime()
                     .desc();
             
             // 分页查询
             long total = taskQuery.count();
             int firstResult = (current - 1) * size;
-            List<org.flowable.task.api.Task> tasks = taskQuery
-                    .listPage(firstResult, size);
+            List<org.flowable.task.api.Task> tasks = taskQuery.listPage(firstResult, size);
             
             // 2. 转换为VO
-            List<TaskVO> taskVOList = new java.util.ArrayList<>();
-            
+            List<TaskVO> taskVOList = new ArrayList<>();
             for (org.flowable.task.api.Task task : tasks) {
                 TaskVO vo = new TaskVO();
                 vo.setTaskId(task.getId());
                 vo.setTaskName(task.getName());
-                vo.setProcessInstanceId(task.getProcessInstanceId());
                 vo.setCreateTime(task.getCreateTime().toInstant()
                         .atZone(java.time.ZoneId.systemDefault())
                         .toLocalDateTime());
-                vo.setPriority(task.getPriority());
                 
                 // 获取流程实例信息
                 org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService
@@ -909,17 +837,19 @@ public class WorkflowServiceImpl implements WorkflowService {
             
             // 2. 转换为VO
             List<TaskVO> taskVOList = new ArrayList<>();
-            
             for (Object historyTask : historyTasks) {
                 TaskVO vo = new TaskVO();
-                vo.setTaskId((String) historyTask.getClass().getMethod("getId").invoke(historyTask));
-                vo.setTaskName((String) historyTask.getClass().getMethod("getName").invoke(historyTask));
-                vo.setProcessInstanceId((String) historyTask.getClass().getMethod("getProcessInstanceId").invoke(historyTask));
                 
-                Object startTime = historyTask.getClass().getMethod("getStartTime").invoke(historyTask);
-                if (startTime != null) {
-                    java.util.Date startDate = (java.util.Date) startTime;
-                    vo.setCreateTime(startDate.toInstant()
+                // 使用反射获取历史任务属性
+                String taskId = (String) historyTask.getClass().getMethod("getId").invoke(historyTask);
+                String taskName = (String) historyTask.getClass().getMethod("getName").invoke(historyTask);
+                Object endTimeObj = historyTask.getClass().getMethod("getEndTime").invoke(historyTask);
+                
+                vo.setTaskId(taskId);
+                vo.setTaskName(taskName);
+                if (endTimeObj != null) {
+                    java.util.Date endTime = (java.util.Date) endTimeObj;
+                    vo.setApproveTime(endTime.toInstant()
                             .atZone(java.time.ZoneId.systemDefault())
                             .toLocalDateTime());
                 }
@@ -994,8 +924,6 @@ public class WorkflowServiceImpl implements WorkflowService {
             throw new RuntimeException("查询已办任务失败：" + e.getMessage());
         }
     }
-    
-    // ==================== 私有辅助方法 ====================
     
     /**
      * 更新业务状态
@@ -1124,19 +1052,14 @@ public class WorkflowServiceImpl implements WorkflowService {
                 Deployment deployment = repositoryService.createDeploymentQuery()
                         .deploymentId(info.getDeploymentId())
                         .singleResult();
-                if (deployment != null && deployment.getDeploymentTime() != null) {
+                if (deployment != null) {
                     dto.setDeployTime(deployment.getDeploymentTime().toInstant()
                             .atZone(java.time.ZoneId.systemDefault())
                             .toLocalDateTime());
-                } else {
-                    dto.setDeployTime(info.getCreateTime());
                 }
-            } else {
-                dto.setDeployTime(info.getCreateTime());
             }
         } catch (Exception e) {
-            log.warn("获取部署时间失败，使用创建时间：{}", info.getProcessKey());
-            dto.setDeployTime(info.getCreateTime());
+            log.warn("获取部署时间失败", e);
         }
         
         return dto;
@@ -1144,7 +1067,17 @@ public class WorkflowServiceImpl implements WorkflowService {
     
     private ProcessNodeDTO convertNodeToDTO(ProcessNode node) {
         ProcessNodeDTO dto = new ProcessNodeDTO();
-        BeanUtils.copyProperties(node, dto);
+        dto.setId(node.getId());
+        dto.setNodeKey(node.getNodeKey());
+        dto.setNodeName(node.getNodeName());
+        dto.setNodeType(node.getNodeType());
+        dto.setAssigneeType(node.getAssigneeType());
+        dto.setAssigneeConfig(node.getAssigneeConfig());
+        dto.setAllowReject(node.getAllowReject());
+        dto.setRequireAttachment(node.getRequireAttachment());
+        dto.setTimeoutHours(node.getTimeoutHours());
+        dto.setTimeoutReminder(node.getTimeoutReminder());
+        dto.setNodeOrder(node.getNodeOrder());
         return dto;
     }
 }

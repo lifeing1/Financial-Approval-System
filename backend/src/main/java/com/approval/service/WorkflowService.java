@@ -2,6 +2,7 @@ package com.approval.service;
 
 import com.approval.dto.ProcessDefinitionDTO;
 import com.approval.dto.ProcessDeployRequest;
+import com.approval.dto.ProcessNodeDTO;
 import com.approval.vo.TaskVO;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.web.multipart.MultipartFile;
@@ -92,4 +93,9 @@ public interface WorkflowService {
      * 获取用户已办任务
      */
     Page<TaskVO> getUserHistoryTasks(Long userId, Integer current, Integer size);
+    
+    /**
+     * 获取流程的所有节点信息
+     */
+    List<ProcessNodeDTO> getProcessNodes(String processKey);
 }

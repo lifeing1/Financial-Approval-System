@@ -107,6 +107,16 @@ public class TaskVO {
     private LocalDateTime createTime;
     
     /**
+     * 审批完成时间
+     */
+    private LocalDateTime approveTime;
+
+    /**
+     * 状态: 0-草稿 1-审批中 2-已通过 3-已驳回 4-已撤回
+     */
+    private Integer status;
+    
+    /**
      * 优先级
      */
     private Integer priority;
