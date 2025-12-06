@@ -7,10 +7,7 @@ import com.approval.entity.ApprovalOpinion;
 import com.approval.entity.PettyCash;
 import com.approval.entity.SysUser;
 import com.approval.entity.SysDept;
-import com.approval.mapper.PettyCashMapper;
-import com.approval.mapper.SysUserMapper;
-import com.approval.mapper.SysDeptMapper;
-import com.approval.mapper.ApprovalOpinionMapper;
+import com.approval.mapper.*;
 import com.approval.service.PettyCashService;
 import com.approval.service.WorkflowService;
 import com.approval.vo.PettyCashVO;
@@ -40,6 +37,7 @@ public class PettyCashServiceImpl implements PettyCashService {
     private final SysDeptMapper sysDeptMapper;
     private final WorkflowService workflowService;
     private final ApprovalOpinionMapper approvalOpinionMapper;
+    private final SysRoleMapper roleMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -201,12 +199,17 @@ public class PettyCashServiceImpl implements PettyCashService {
             }
         }
 
-        //审批时间处理
-        LocalDateTime approvalTime = approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>()
-                .eq("business_id", vo.getId())
-                .eq("approver_id", StpUtil.getLoginIdAsLong())).getCreateTime();
-        //createTime被占用，用updateTime接收审批时间
-        vo.setUpdateTime(approvalTime);
+        String roleName = roleMapper.selectRolesByUserId(StpUtil.getLoginIdAsLong()).get(0).getRoleName();
+        if ("普通员工".equals(roleName)) {
+            //普通员工不对审批时间做处理
+        }else {
+            //审批时间处理
+            LocalDateTime approvalTime = approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>()
+                    .eq("business_id", vo.getId())
+                    .eq("approver_id", StpUtil.getLoginIdAsLong())).getCreateTime();
+            //createTime被占用，用updateTime接收审批时间
+            vo.setUpdateTime(approvalTime);
+        }
 
         return vo;
     }

@@ -65,7 +65,7 @@
               <n-thing :title="item.title" :description="item.description">
                 <template #footer>
                   <n-space>
-                    <n-tag :type="item.type">{{ item.status }}</n-tag>
+                    <n-tag :type="getStatusTag(item.status).type">{{ getStatusTag(item.status).label }}</n-tag>
                     <n-text depth="3">{{ item.createTime }}</n-text>
                   </n-space>
                 </template>
@@ -113,6 +113,17 @@ const statistics = ref({
   myApply: 0,
   monthTrip: 0
 })
+
+// 获取状态标签
+const getStatusTag = (status) => {
+  const map = {
+    0: { type: 'default', label: '草稿' },
+    1: { type: 'info', label: '审批中' },
+    2: { type: 'success', label: '已通过' },
+    3: { type: 'error', label: '已驳回' }
+  }
+  return map[status] || { type: 'default', label: '未知' }
+}
 
 // 待办列表
 const todoList = ref([])
