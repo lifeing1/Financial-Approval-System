@@ -1,5 +1,6 @@
 package com.approval.service;
 
+import com.approval.dto.BusinessTripDTO;
 import com.approval.entity.BusinessTrip;
 import com.approval.vo.BusinessTripVO;
 import com.approval.vo.TaskVO;
@@ -16,12 +17,12 @@ public interface BusinessTripService {
     /**
      * 保存草稿
      */
-    Long saveDraft(BusinessTripVO vo);
+    Long saveDraft(BusinessTripDTO dto);
     
     /**
      * 提交申请
      */
-    void submitApply(Long id);
+    void submitApply(BusinessTripDTO dto);
     
     /**
      * 获取我的申请列表
