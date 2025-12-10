@@ -2,7 +2,7 @@ package com.approval.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.approval.common.result.Result;
-import com.approval.vo.BusinessTripVO;
+import com.approval.dto.BusinessTripDTO;
 import com.approval.service.BusinessTripService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,8 +28,8 @@ public class BusinessTripController {
      */
     @Operation(summary = "保存草稿")
     @PostMapping("/draft")
-    public Result<?> saveDraft(@Valid @RequestBody BusinessTripVO vo) {
-        Long id = businessTripService.saveDraft(vo);
+    public Result<?> saveDraft(@Valid @RequestBody BusinessTripDTO dto) {
+        Long id = businessTripService.saveDraft(dto);
         return Result.success(id);
     }
     
@@ -37,9 +37,9 @@ public class BusinessTripController {
      * 提交申请
      */
     @Operation(summary = "提交申请")
-    @PostMapping("/submit/{id}")
-    public Result<?> submit(@PathVariable Long id) {
-        businessTripService.submitApply(id);
+    @PostMapping("/submit")
+    public Result<?> submit(@Valid @RequestBody BusinessTripDTO dto) {
+        businessTripService.submitApply(dto);
         return Result.success("提交成功");
     }
     

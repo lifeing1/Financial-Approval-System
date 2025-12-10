@@ -609,8 +609,9 @@ const handleSubmit = async () => {
           const loadingMsg = message.loading(hasFiles ? '正在上传文件并提交...' : '正在提交...', { duration: 0 })
           
           try {
-            // 准备提交数据，需要先上传附件
+            // 准备提交数据
             const submitData = {
+              id: draftId.value,
               reason: formData.reason,
               startPlace: formData.startPlace,
               destination: formData.destination,
@@ -650,7 +651,7 @@ const handleSubmit = async () => {
               submitData.expenses.push(expenseData)
             }
             
-            // 提交审批
+            // 直接提交申请，传入完整的表单数据
             await submitApply(submitData)
             loadingMsg.destroy()
             message.success('提交成功')
