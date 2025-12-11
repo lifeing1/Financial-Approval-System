@@ -6,19 +6,15 @@ import com.approval.dto.AttachmentDTO;
 import com.approval.dto.BusinessTripDTO;
 import com.approval.dto.TripExpenseDTO;
 import com.approval.entity.*;
+import com.approval.mapper.*;
 import com.approval.vo.BusinessTripVO;
 import com.approval.vo.TripExpenseVO;
 import com.approval.vo.AttachmentVO;
-import com.approval.mapper.BusinessTripMapper;
-import com.approval.mapper.SysUserMapper;
-import com.approval.mapper.SysDeptMapper;
-import com.approval.mapper.TripExpenseMapper;
-import com.approval.mapper.ApprovalOpinionMapper;
-import com.approval.mapper.AttachmentMapper;
 import com.approval.service.BusinessTripService;
 import com.approval.service.WorkflowService;
 import com.approval.vo.TaskVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +45,7 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     private final WorkflowService workflowService;
     private final ApprovalOpinionMapper approvalOpinionMapper;
     private final AttachmentMapper attachmentMapper;
+    private final SysRoleMapper roleMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -300,7 +297,14 @@ public class BusinessTripServiceImpl implements BusinessTripService {
         List<TaskVO> businessTripTasks = taskPage.getRecords().stream()
                 .filter(task -> "business_trip".equals(task.getBusinessType()))
                 .collect(java.util.stream.Collectors.toList());
-        
+
+        //审批结果赋值
+        businessTripTasks.forEach(task -> {task.setStatus(businessTripMapper.selectById(task.getId()).getStatus());});
+
+        //每个审批人的审批时间
+        businessTripTasks.forEach(task -> {task.setApproveTime(approvalOpinionMapper.selectOne(
+                new QueryWrapper<ApprovalOpinion>().eq("task_id", task.getTaskId())).getCreateTime());});
+
         // 构建返回结果
         Page<TaskVO> resultPage = new Page<>(page.getCurrent(), page.getSize());
         resultPage.setRecords(businessTripTasks);
@@ -362,6 +366,20 @@ public class BusinessTripServiceImpl implements BusinessTripService {
             if (dept != null) {
                 vo.setDeptName(dept.getDeptName());
             }
+        }
+
+        //查询审批时间
+        String roleName = roleMapper.selectRolesByUserId(StpUtil.getLoginIdAsLong()).get(0).getRoleName();
+        if ("普通员工".equals(roleName)) {
+            //普通员工不对审批时间做处理
+        }else {
+            //审批时间处理
+            LocalDateTime approvalTime = approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>()
+                    .eq("business_id", vo.getId())
+                    .eq("business_type", "business_trip")
+                    .eq("approver_id", StpUtil.getLoginIdAsLong())).getCreateTime();
+            //createTime被占用，用updateTime接收审批时间
+            vo.setUpdateTime(approvalTime);
         }
         
         return vo;

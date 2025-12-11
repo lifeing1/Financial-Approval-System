@@ -95,6 +95,7 @@ const pagination = ref({
 
 const getStatusTag = (status) => {
   const map = {
+    1: { type: 'info', label: '审批中' },
     2: { type: 'success', label: '已通过' },
     3: { type: 'error', label: '已驳回' }
   }
