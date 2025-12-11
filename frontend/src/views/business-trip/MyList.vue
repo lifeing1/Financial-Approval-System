@@ -212,7 +212,7 @@
               <n-text depth="3" style="font-size: 12px;">审批意见：{{ item.opinion || '无' }}</n-text>
             </template>
             <template #footer>
-              <n-text depth="3" style="font-size: 12px;">审批人：{{ item.approverName }}</n-text>
+              <n-text depth="3" style="font-size: 12px;">审批人：{{ item.approverName }} {{formatDateTime(item.createTime) }}</n-text>
             </template>
           </n-timeline-item>
         </n-timeline>

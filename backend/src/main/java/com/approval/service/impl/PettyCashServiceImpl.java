@@ -206,6 +206,7 @@ public class PettyCashServiceImpl implements PettyCashService {
             //审批时间处理
             LocalDateTime approvalTime = approvalOpinionMapper.selectOne(new QueryWrapper<ApprovalOpinion>()
                     .eq("business_id", vo.getId())
+                    .eq("business_type", "petty_cash")
                     .eq("approver_id", StpUtil.getLoginIdAsLong())).getCreateTime();
             //createTime被占用，用updateTime接收审批时间
             vo.setUpdateTime(approvalTime);
